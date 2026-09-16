@@ -32,7 +32,7 @@ export const OnboardingSuccess: React.FC = () => {
 
       <Button
         type="button"
-        onClick={() => router.push("/")}
+        onClick={() => router.push("/dashboard")}
         variant="secondary"
         size="md"
         className="w-full h-12.5 text-white font-bold text-base bg-secondary hover:bg-secondary-hover transition-all shadow-lg cursor-pointer rounded-xl"

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useId, useState, useRef } from "react";
+import React, { useId, useState } from "react";
 import { Select as AntSelect } from "antd";
-import { FiChevronDown, FiX, FiSearch } from "react-icons/fi";
+import { FiChevronDown } from "react-icons/fi";
 
 export interface SelectOption {
   label: string;
@@ -79,7 +79,7 @@ export const Select: React.FC<SelectProps> = ({
 }) => {
   const reactId = useId();
   const [internalSearch, setInternalSearch] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const dropdownSearch = searchValue !== undefined ? searchValue : internalSearch;
   const selectId = id || reactId;
@@ -115,14 +115,14 @@ export const Select: React.FC<SelectProps> = ({
     [filterOption]
   );
 
-  const filteredOptions = React.useMemo(() => {
-    if (!dropdownSearch) return normalizedOptions;
-    return normalizedOptions.filter((opt) => antFilterOption(dropdownSearch, opt));
-  }, [normalizedOptions, dropdownSearch, antFilterOption]);
-
   const handleChange = (newVal: string | string[] | undefined) => {
     if (!onChange) return;
     onChange({ target: { name: name || "", value: newVal } });
+  };
+
+  const handleSearch = (val: string) => {
+    setInternalSearch(val);
+    onSearch?.(val);
   };
 
   const isRawId = (val?: string) => {
@@ -175,81 +175,21 @@ export const Select: React.FC<SelectProps> = ({
         id={selectId}
         mode={multiple ? "multiple" : undefined}
         value={antValue}
-        placeholder={loading ? "Loading..." : placeholder}
+        placeholder={loading ? "Loading..." : isOpen && shouldShowSearch && searchPlaceholder ? searchPlaceholder : placeholder}
         disabled={disabled}
         loading={loading}
-        showSearch={false}
+        showSearch={shouldShowSearch}
+        {...(shouldShowSearch ? { searchValue: dropdownSearch, onSearch: handleSearch } : {})}
         allowClear={allowClear}
         onOpenChange={(open) => {
+          setIsOpen(open);
           if (!open) {
             setInternalSearch("");
             onSearch?.("");
-          } else if (shouldShowSearch) {
-            setTimeout(() => {
-              searchInputRef.current?.focus();
-            }, 50);
           }
         }}
-        popupRender={(menu) => (
-          <div className="flex flex-col min-w-0">
-            {shouldShowSearch && (
-              <div
-                className="p-2 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-xl"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-              >
-                <div className="relative flex items-center w-full">
-                  <FiSearch className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none shrink-0" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={dropdownSearch}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setInternalSearch(val);
-                      onSearch?.(val);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Escape") {
-                        e.stopPropagation();
-                      }
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                      }
-                    }}
-                    placeholder={searchPlaceholder || "Search..."}
-                    autoComplete="off"
-                    spellCheck={false}
-                    className="w-full h-9 pl-9 pr-8 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-primary-solid focus:ring-2 focus:ring-primary/10 text-text-dark placeholder:text-gray-400 font-normal transition-all"
-                  />
-                  {dropdownSearch && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setInternalSearch("");
-                        onSearch?.("");
-                        searchInputRef.current?.focus();
-                      }}
-                      className="absolute right-2.5 text-gray-400 hover:text-gray-600 p-0.5 rounded cursor-pointer transition-colors"
-                      title="Clear search"
-                    >
-                      <FiX className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            {menu}
-          </div>
-        )}
         {...({ autoComplete: autoComplete || "off" } as Record<string, string>)}
-        filterOption={false}
+        filterOption={antFilterOption}
         maxTagCount={maxTagCount !== undefined ? maxTagCount : multiple ? "responsive" : undefined}
         maxTagTextLength={maxTagTextLength}
         notFoundContent={
@@ -269,7 +209,7 @@ export const Select: React.FC<SelectProps> = ({
           )
         }
         onChange={handleChange}
-        options={filteredOptions}
+        options={normalizedOptions}
         className={`w-full ${className}`}
         popupMatchSelectWidth={
           popupMatchSelectWidth !== undefined ? popupMatchSelectWidth : size === "sm" ? false : true
@@ -286,7 +226,7 @@ export const Select: React.FC<SelectProps> = ({
         styles={{
           popup: {
             root: {
-              padding: shouldShowSearch ? "0px 0px 4px 0px" : "4px",
+              padding: "4px",
               borderRadius: "16px",
               minWidth: size === "sm" ? 100 : undefined,
             },

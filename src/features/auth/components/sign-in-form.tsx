@@ -6,12 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GoogleLogin } from "@react-oauth/google";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useToast } from "@/shared/components/ui/toast";
 import { ASSETS_URL } from "@/assets";
 import { validateEmail } from "@/shared/lib/validation";
 import { useLogin, useLoginWithGoogle } from "@/features/auth/hooks";
+import { meKeys, getPostAuthRedirect } from "@/features/me/hooks";
+import * as meApi from "@/features/me/api";
 
 export const SignInForm: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -20,8 +23,14 @@ export const SignInForm: React.FC = () => {
 
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { mutate: login, isPending: isLoggingIn } = useLogin();
   const { mutate: loginWithGoogle, isPending: isGooglePending } = useLoginWithGoogle();
+
+  const redirectPostAuth = async () => {
+    const me = await queryClient.fetchQuery({ queryKey: meKeys.me(), queryFn: meApi.getMe });
+    router.push(getPostAuthRedirect(me));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +57,7 @@ export const SignInForm: React.FC = () => {
             title: "Welcome Back!",
             description: `Signed in as ${email}`,
           });
-          router.push("/");
+          redirectPostAuth();
         },
         onError: (error) => {
           if (error.code === "auth.account_not_verified" || error.status === 403) {
@@ -91,7 +100,7 @@ export const SignInForm: React.FC = () => {
             title: data.isNewUser ? "Welcome!" : "Welcome Back!",
             description: `Signed in as ${data.user.email}`,
           });
-          router.push("/");
+          redirectPostAuth();
         },
         onError: (error) => {
           toast({
