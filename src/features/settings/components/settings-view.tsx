@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { SettingsSidebar } from "./settings-sidebar";
 import { PersonalInfoTab } from "./personal-info-tab";
 import { SecurityTab } from "./security-tab";
@@ -14,17 +15,15 @@ export const SettingsView: React.FC = () => {
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="w-full flex flex-col min-h-screen"
-    >
-      <div className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
-        <h1 className="text-2xl font-extrabold text-neutral-primary tracking-tight mb-6">
-          Settings
-        </h1>
+    <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
+      <DashboardNav title="Settings" rightAction={null} />
 
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1"
+      >
         <div className="flex flex-col lg:flex-row items-start gap-6 w-full">
           <SettingsSidebar
             avatarSrc={avatarSrc}
@@ -38,12 +37,12 @@ export const SettingsView: React.FC = () => {
             {activeTab === "profile" ? <PersonalInfoTab /> : <SecurityTab />}
           </main>
         </div>
-      </div>
+      </motion.div>
 
       <DeleteAccountModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
       />
-    </motion.div>
+    </div>
   );
 };

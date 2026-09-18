@@ -2,8 +2,9 @@
 
 import { useMyEnrollments } from "@/features/enrollments/hooks";
 import { useMyCertificates } from "@/features/certificates/hooks";
-import type { Money } from "@/shared/types";
 import type { DashboardStat } from "@/features/dashboard/types";
+
+export { formatMoney } from "@/shared/lib/money";
 
 export function useDashboardStats(): { stats: DashboardStat[]; isLoading: boolean } {
   const enrollmentsQuery = useMyEnrollments();
@@ -37,15 +38,3 @@ export function useDashboardStats(): { stats: DashboardStat[]; isLoading: boolea
   };
 }
 
-export function formatMoney(money: Money): string {
-  const amount = Number(money.amountMinorUnits) / 100;
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: money.currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${money.currency} ${amount.toLocaleString()}`;
-  }
-}

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { useCourses } from "@/features/courses/hooks";
 import { useCreateEnrollment } from "@/features/enrollments/hooks";
 import { useToast } from "@/shared/components/ui/toast";
@@ -10,11 +11,13 @@ export const RecommendedCourses: React.FC = () => {
   const { data: courses, isLoading } = useCourses({ limit: 8 });
   const { mutate: enroll, isPending, variables: pendingCourseId } = useCreateEnrollment();
   const { toast } = useToast();
+  const router = useRouter();
 
-  const handleEnroll = (courseId: string) => {
+  const handleEnrollFree = (courseId: string) => {
     enroll(courseId, {
-      onSuccess: () => {
+      onSuccess: (enrollment) => {
         toast({ type: "success", title: "Enrolled", description: "You're enrolled in this course." });
+        router.push(`/learn/${enrollment.id}`);
       },
       onError: (error) => {
         toast({
@@ -40,7 +43,7 @@ export const RecommendedCourses: React.FC = () => {
             <CourseCard
               key={course.id}
               course={course}
-              onEnroll={handleEnroll}
+              onEnrollFree={handleEnrollFree}
               isEnrolling={isPending && pendingCourseId === course.id}
             />
           ))}

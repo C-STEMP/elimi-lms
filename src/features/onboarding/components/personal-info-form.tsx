@@ -9,9 +9,10 @@ import { DatePicker } from "@/shared/components/ui/date-picker";
 import { Button } from "@/shared/components/ui/button";
 import { useToast } from "@/shared/components/ui/toast";
 import { validateRequired } from "@/shared/lib/validation";
-import { useOnboarding, useSaveOnboarding, useSubmitOnboarding } from "@/features/onboarding/hooks";
+import { useOnboarding, useSaveOnboarding } from "@/features/onboarding/hooks";
 import { useCountries, useStates, useLgas } from "@/features/address/hooks";
 import type { LearnerOnboardingPayload } from "@/features/onboarding/types";
+import type { LmsPersonaType } from "@/shared/types";
 
 const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
 
@@ -61,14 +62,14 @@ function fromIsoDate(iso?: string): string {
 }
 
 export interface PersonalInfoFormProps {
+  persona: LmsPersonaType;
   onSuccess: () => void;
 }
 
-export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onSuccess }) => {
+export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ persona, onSuccess }) => {
   const { toast } = useToast();
-  const { data: onboarding, isLoading: isLoadingDraft } = useOnboarding("learner");
-  const { mutate: saveOnboarding } = useSaveOnboarding("learner");
-  const { mutate: submitOnboarding, isPending: isSubmitting } = useSubmitOnboarding("learner");
+  const { data: onboarding, isLoading: isLoadingDraft } = useOnboarding(persona);
+  const { mutate: saveOnboarding, isPending: isSaving } = useSaveOnboarding(persona);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -164,19 +165,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onSuccess })
     }
 
     saveOnboarding(buildPayload(), {
-      onSuccess: () => {
-        submitOnboarding(undefined, {
-          onSuccess: () => onSuccess(),
-          onError: (error) => {
-            toast({
-              type: "error",
-              title: "Couldn't Complete Setup",
-              description:
-                error.message || "Some required information is still missing. Please review the form.",
-            });
-          },
-        });
-      },
+      onSuccess: () => onSuccess(),
       onError: (error) => {
         toast({
           type: "error",
@@ -346,10 +335,10 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onSuccess })
             type="submit"
             variant="secondary"
             size="md"
-            loading={isSubmitting}
+            loading={isSaving}
             className="px-6 h-11 text-white font-bold text-sm bg-secondary hover:bg-secondary-hover rounded-xl flex items-center gap-2 transition-all shadow-lg cursor-pointer"
           >
-            <span>Complete Setup</span>
+            <span>Continue</span>
             <FiArrowRight className="w-4 h-4" />
           </Button>
         </div>
