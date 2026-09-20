@@ -9,11 +9,17 @@ import type { CourseSummary } from "@/features/courses/types";
 
 interface CourseCardProps {
   course: CourseSummary;
+  enrollmentId?: string;
   onEnrollFree: (courseId: string) => void;
   isEnrolling: boolean;
 }
 
-export const CourseCard: React.FC<CourseCardProps> = ({ course, onEnrollFree, isEnrolling }) => {
+export const CourseCard: React.FC<CourseCardProps> = ({
+  course,
+  enrollmentId,
+  onEnrollFree,
+  isEnrolling,
+}) => {
   const free = isFree(course.price);
 
   return (
@@ -32,7 +38,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onEnrollFree, is
           {course.description || "No description available yet."}
         </p>
 
-        {free ? (
+        {enrollmentId ? (
+          <Link href={`/learn/${enrollmentId}`} className="mt-2">
+            <Button type="button" variant="secondary" size="sm" fullWidth>
+              Continue Learning
+            </Button>
+          </Link>
+        ) : free ? (
           <Button
             type="button"
             variant="secondary"

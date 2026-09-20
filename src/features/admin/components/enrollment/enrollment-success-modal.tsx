@@ -1,0 +1,64 @@
+"use client";
+
+import React from "react";
+import Image from "next/image";
+import { Modal } from "antd";
+import { ASSETS_URL } from "@/assets";
+
+export interface EnrollmentSuccessModalProps {
+  isOpen: boolean;
+  title?: string;
+  message?: string;
+  onClose: () => void;
+}
+
+export const EnrollmentSuccessModal: React.FC<EnrollmentSuccessModalProps> = ({
+  isOpen,
+  title = "Congratulations",
+  message = "Learners Enrolled Successfully",
+  onClose,
+}) => {
+  return (
+    <Modal
+      open={isOpen}
+      onCancel={onClose}
+      closable={false}
+      footer={null}
+      centered
+      width={400}
+      styles={{
+        mask: { backdropFilter: "blur(2px)", backgroundColor: "rgba(0, 0, 0, 0.4)" },
+        body: { padding: "2rem 2rem 2rem" },
+      }}
+    >
+      <div className="flex flex-col items-center text-center">
+        <div className="w-20 h-20 mb-3 relative flex items-center justify-center">
+          <Image
+            src={ASSETS_URL.successCheckmarkImg}
+            alt="Success"
+            width={80}
+            height={80}
+            className="w-20 h-20 object-contain"
+            priority
+          />
+        </div>
+
+        <h3 className="text-lg font-bold text-neutral-primary mb-1">
+          {title}
+        </h3>
+
+        <p className="text-xs text-neutral-secondary mb-6">
+          {message}
+        </p>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-2.5 px-4 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-xs transition-colors cursor-pointer shadow-2xs"
+        >
+          Continue
+        </button>
+      </div>
+    </Modal>
+  );
+};

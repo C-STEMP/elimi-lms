@@ -39,6 +39,19 @@ export type ScormPlayerProps = {
  * this needs a same-origin proxy (e.g. a Next.js rewrite) in front of the
  * player URL, or the SCO's API discovery will fail silently.
  */
+function toProxiedUrl(url: string): string {
+  if (typeof window === "undefined" || !url) return url;
+  try {
+    const target = new URL(url, window.location.href);
+    if (target.origin !== window.location.origin) {
+      return `/scorm-proxy${target.pathname}${target.search}${target.hash}`;
+    }
+  } catch {
+    // Keep original URL if parsing fails
+  }
+  return url;
+}
+
 export function ScormPlayer({
   enrollmentId,
   session,
@@ -74,15 +87,14 @@ export function ScormPlayer({
       delete window.API;
       runtimeRef.current = null;
     };
-    // Re-running for a new session (new sessionId) is intentional; learnerId/
-    // learnerName changing mid-session isn't a real scenario worth reacting to.
+    // Re-running for a new session (new sessionId) is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.sessionId]);
 
   return (
     <iframe
       title="SCORM content"
-      src={session.launchUrl}
+      src={toProxiedUrl(session.launchUrl)}
       className="h-full w-full border-0"
       allow="fullscreen"
     />

@@ -3,12 +3,13 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useCourses } from "@/features/courses/hooks";
-import { useCreateEnrollment } from "@/features/enrollments/hooks";
+import { useCreateEnrollment, useMyEnrollments } from "@/features/enrollments/hooks";
 import { useToast } from "@/shared/components/ui/toast";
 import { CourseCard } from "@/features/dashboard/components/course-card";
 
 export const RecommendedCourses: React.FC = () => {
   const { data: courses, isLoading } = useCourses({ limit: 8 });
+  const { data: myEnrollments } = useMyEnrollments();
   const { mutate: enroll, isPending, variables: pendingCourseId } = useCreateEnrollment();
   const { toast } = useToast();
   const router = useRouter();
@@ -39,14 +40,20 @@ export const RecommendedCourses: React.FC = () => {
         <p className="text-neutral-secondary text-sm">No courses available yet.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {courses.data.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              onEnrollFree={handleEnrollFree}
-              isEnrolling={isPending && pendingCourseId === course.id}
-            />
-          ))}
+          {courses.data.map((course) => {
+            const enrollment = myEnrollments?.data.find(
+              (e) => e.courseId === course.id && (e.status === "active" || e.status === "completed")
+            );
+            return (
+              <CourseCard
+                key={course.id}
+                course={course}
+                enrollmentId={enrollment?.id}
+                onEnrollFree={handleEnrollFree}
+                isEnrolling={isPending && pendingCourseId === course.id}
+              />
+            );
+          })}
         </div>
       )}
     </section>
