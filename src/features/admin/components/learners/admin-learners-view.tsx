@@ -5,7 +5,6 @@ import { AdminHeader } from "../overview/admin-header";
 import { LearnersTopActions } from "./learners-top-actions";
 import { LearnersSearchFilterBar } from "./learners-search-filter-bar";
 import { LearnersTable } from "./learners-table";
-import { CoursesPagination } from "../courses/courses-pagination";
 import { EnrollLearnerModal } from "./enroll-learner-modal";
 import { EnrollConfirmModal } from "./enroll-confirm-modal";
 import { EnrollSuccessModal } from "./enroll-success-modal";
@@ -23,9 +22,6 @@ export const AdminLearnersView: React.FC = () => {
     toggleSelectLearner,
     viewMode,
     setViewMode,
-    currentPage,
-    setCurrentPage,
-    totalPages,
     isEnrollOpen,
     enrollForm,
     setEnrollForm,
@@ -67,12 +63,6 @@ export const AdminLearnersView: React.FC = () => {
           onSuspend={openSuspendConfirm}
         />
       </div>
-
-      <CoursesPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-      />
 
       <EnrollLearnerModal
         isOpen={isEnrollOpen}

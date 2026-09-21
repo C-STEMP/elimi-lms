@@ -4,7 +4,6 @@ import React from "react";
 import { AdminHeader } from "../overview/admin-header";
 import { CoursesFilterBar } from "./courses-filter-bar";
 import { CoursesGrid } from "./courses-grid";
-import { CoursesPagination } from "./courses-pagination";
 import { CreateCourseModal } from "./create-course-modal";
 import { CreateCourseSuccessModal } from "./create-course-success-modal";
 import { DeleteCourseConfirmModal } from "./delete-course-confirm-modal";
@@ -16,9 +15,6 @@ export const AdminCoursesView: React.FC = () => {
     courses,
     activeTab,
     setActiveTab,
-    currentPage,
-    setCurrentPage,
-    totalPages,
     isCreateOpen,
     createStep,
     setCreateStep,
@@ -57,12 +53,6 @@ export const AdminCoursesView: React.FC = () => {
         onDelete={openDeleteConfirm}
         onPublish={handlePublishCourse}
         onUnpublish={handleUnpublishCourse}
-      />
-
-      <CoursesPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
       />
 
       <CreateCourseModal

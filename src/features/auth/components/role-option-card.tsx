@@ -1,79 +1,139 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
+import type { StaticImageData } from "next/image";
 import { FiArrowRight } from "react-icons/fi";
+import { ASSETS_URL } from "@/assets";
+
+export type RoleHoverColor = "yellow" | "red" | "black";
 
 export interface RoleOptionCardProps {
   id: string;
   title: string;
   description: string;
+  index?: number;
+  hoverColor?: RoleHoverColor;
   isSelected?: boolean;
   disabled?: boolean;
   badge?: string;
-  onSelect: (id: string) => void;
+  onSelect?: (id: string) => void;
 }
+
+const CARD_IMAGES: Record<RoleHoverColor, StaticImageData | string> = {
+  yellow: ASSETS_URL.cardYellow,
+  red: ASSETS_URL.cardRed,
+  black: ASSETS_URL.cardBlack,
+};
+
+const COLOR_CYCLE: RoleHoverColor[] = ["yellow", "red", "black"];
 
 export const RoleOptionCard: React.FC<RoleOptionCardProps> = ({
   id,
   title,
   description,
+  index = 0,
+  hoverColor,
   isSelected = false,
   disabled = false,
   badge,
   onSelect,
 }) => {
+  const effectiveColor: RoleHoverColor =
+    hoverColor || COLOR_CYCLE[index % COLOR_CYCLE.length];
+  const activeImage = CARD_IMAGES[effectiveColor];
+
   return (
     <button
       type="button"
-      onClick={() => !disabled && onSelect(id)}
+      onClick={() => !disabled && onSelect?.(id)}
       disabled={disabled}
-      className={`group relative w-full overflow-hidden rounded-2xl border-2 p-6 sm:p-7 flex items-center justify-between gap-4 text-left select-none transition-all duration-300 ease-out ${
+      className={`group relative w-full max-w-109.75 aspect-439/199 rounded-[10px] flex items-end justify-between px-4 sm:px-8 pb-4 sm:pb-7 text-left select-none overflow-hidden focus:outline-none transition-all duration-300 ease-out ${
         disabled
-          ? "border-transparent bg-input-bg/60 cursor-not-allowed opacity-60"
-          : "cursor-pointer active:scale-[0.995]"
-      } ${
-        isSelected
-          ? "border-primary-solid bg-primary-solid/5"
-          : disabled
-            ? ""
-            : "border-transparent bg-input-bg hover:border-primary-solid/25"
+          ? "opacity-80 cursor-not-allowed"
+          : "cursor-pointer active:scale-[0.995] hover:translate-x-1.5"
       }`}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-8 -right-6 w-24 h-24 rounded-full bg-white/70"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-10 right-14 w-16 h-16 rounded-full bg-white/50"
-      />
-
       {badge && (
-        <span className="absolute top-3.5 right-4 z-20 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
-          {badge}
-        </span>
+        <div className="absolute top-3.5 right-4 sm:top-5 sm:right-6 z-20">
+          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+            {badge}
+          </span>
+        </div>
       )}
 
-      <span className="relative z-10 flex flex-col gap-0.5">
-        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-neutral-primary">
-          {title}
-        </span>
-        <span className="text-xs sm:text-sm font-normal text-neutral-secondary">
-          {description}
-        </span>
-      </span>
-
-      <span
-        className={`relative z-10 shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+      <Image
+        src={ASSETS_URL.cardWhite}
+        alt="Default Card Background"
+        fill
+        priority
+        loading="eager"
+        sizes="(max-width: 439px) 100vw, 439px"
+        className={`object-contain rounded-[10px] pointer-events-none transition-opacity duration-500 ease-in-out ${
           isSelected
-            ? "bg-primary-solid text-white"
+            ? "opacity-0"
             : disabled
-              ? "bg-white/70 text-neutral-primary"
-              : "bg-white text-neutral-primary group-hover:bg-primary-solid group-hover:text-white"
+            ? "opacity-100"
+            : "opacity-100 group-hover:opacity-0"
         }`}
-      >
-        <FiArrowRight className="w-5 h-5" />
-      </span>
+      />
+
+      <Image
+        src={activeImage}
+        alt={`${effectiveColor} Card Background`}
+        fill
+        priority
+        loading="eager"
+        sizes="(max-width: 439px) 100vw, 439px"
+        className={`object-contain rounded-[10px] pointer-events-none transition-opacity duration-500 ease-in-out ${
+          isSelected
+            ? "opacity-100"
+            : disabled
+            ? "opacity-0"
+            : "opacity-0 group-hover:opacity-100"
+        }`}
+      />
+
+      <div className="relative z-10 flex flex-col gap-0.5 pr-2 sm:pr-4 pb-1">
+        <h3
+          className={`text-base sm:text-xl xl:text-[22px] font-extrabold tracking-tight transition-colors duration-500 ease-in-out ${
+            isSelected
+              ? "text-white"
+              : disabled
+              ? "text-neutral-primary"
+              : "text-neutral-primary group-hover:text-white"
+          }`}
+        >
+          {title}
+        </h3>
+        <p
+          className={`text-[11px] sm:text-xs xl:text-sm font-normal transition-colors duration-500 ease-in-out ${
+            isSelected
+              ? "text-white/90"
+              : disabled
+              ? "text-neutral-secondary"
+              : "text-neutral-secondary group-hover:text-white/90"
+          }`}
+        >
+          {description}
+        </p>
+      </div>
+
+      <div className="relative z-10 shrink-0 pb-1">
+        <div
+          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+            isSelected
+              ? "bg-white text-neutral-primary shadow-lg"
+              : disabled
+              ? "bg-transparent text-neutral-primary"
+              : "bg-transparent text-neutral-primary group-hover:bg-white group-hover:text-neutral-primary group-hover:shadow-lg"
+          }`}
+        >
+          <FiArrowRight className="w-5 h-5" />
+        </div>
+      </div>
     </button>
   );
 };
+
+export const RoleCard = RoleOptionCard;

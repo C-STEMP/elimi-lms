@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { GoogleLogin } from "@react-oauth/google";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,13 +23,15 @@ export const SignInForm: React.FC = () => {
 
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { mutate: login, isPending: isLoggingIn } = useLogin();
   const { mutate: loginWithGoogle, isPending: isGooglePending } = useLoginWithGoogle();
 
   const redirectPostAuth = async () => {
     const me = await queryClient.fetchQuery({ queryKey: meKeys.me(), queryFn: meApi.getMe });
-    router.push(getPostAuthRedirect(me));
+    const redirectUrl = searchParams.get("redirect");
+    router.push(getPostAuthRedirect(me, redirectUrl));
   };
 
   const handleSubmit = (e: React.FormEvent) => {

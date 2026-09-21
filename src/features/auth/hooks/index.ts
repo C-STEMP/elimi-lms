@@ -33,7 +33,6 @@ export function useLogin() {
   return useMutation({
     mutationFn: (input: LoginInput) => authApi.login(input),
     onSuccess: (result) => {
-      tokenStorage.setTokens(result);
       tokenStorage.setUser(result.user);
       queryClient.invalidateQueries({ queryKey: meKeys.me() });
     },
@@ -45,7 +44,6 @@ export function useLoginWithGoogle() {
   return useMutation({
     mutationFn: (input: GoogleLoginInput) => authApi.loginWithGoogle(input),
     onSuccess: (result) => {
-      tokenStorage.setTokens(result);
       tokenStorage.setUser(result.user);
       queryClient.invalidateQueries({ queryKey: meKeys.me() });
     },
@@ -57,7 +55,6 @@ export function useVerifyAccount() {
   return useMutation({
     mutationFn: (input: VerifyAccountInput) => authApi.verifyAccount(input),
     onSuccess: (result) => {
-      tokenStorage.setTokens(result);
       tokenStorage.setUser(result.user);
       queryClient.invalidateQueries({ queryKey: meKeys.me() });
     },
@@ -85,13 +82,9 @@ export function useChangePassword() {
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => {
-      const refreshToken = tokenStorage.getRefreshToken();
-      if (!refreshToken) return Promise.resolve<{ message?: string }>({});
-      return authApi.logout({ refreshToken });
-    },
+    mutationFn: () => authApi.logout(),
     onSuccess: () => {
-      tokenStorage.clearTokens();
+      tokenStorage.clearUser();
       queryClient.clear();
     },
   });
@@ -102,7 +95,7 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: (input: DeleteAccountInput) => authApi.deleteAccount(input),
     onSuccess: () => {
-      tokenStorage.clearTokens();
+      tokenStorage.clearUser();
       queryClient.clear();
     },
   });

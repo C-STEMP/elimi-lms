@@ -1,11 +1,5 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
-import { tokenStorage } from "@/shared/lib/token-storage";
-import { refreshAccessToken } from "@/shared/api/auth-refresh";
+import axios, { type AxiosError } from "axios";
 import type { ApiError, ApiErrorEnvelope } from "@/shared/types";
-
-type RetriableRequestConfig = InternalAxiosRequestConfig & { _retried?: boolean };
-
-const AUTH_ENDPOINTS_EXEMPT_FROM_REFRESH = ["/auth/login", "/auth/refresh", "/auth/register"];
 
 export function createHttpClient(baseURL: string) {
   const client = axios.create({
@@ -15,33 +9,9 @@ export function createHttpClient(baseURL: string) {
     },
   });
 
-  client.interceptors.request.use((config) => {
-    const token = tokenStorage.getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
-
   client.interceptors.response.use(
     (response) => response,
-    async (error: AxiosError<ApiErrorEnvelope>) => {
-      const originalRequest = error.config as RetriableRequestConfig | undefined;
-      const isRefreshable =
-        error.response?.status === 401 &&
-        originalRequest &&
-        !originalRequest._retried &&
-        !AUTH_ENDPOINTS_EXEMPT_FROM_REFRESH.some((path) => originalRequest.url?.includes(path));
-
-      if (isRefreshable && originalRequest) {
-        originalRequest._retried = true;
-        const newAccessToken = await refreshAccessToken();
-        if (newAccessToken) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return client(originalRequest);
-        }
-      }
-
+    (error: AxiosError<ApiErrorEnvelope>) => {
       const envelope = error.response?.data;
       const apiError: ApiError = {
         status: error.response?.status ?? null,

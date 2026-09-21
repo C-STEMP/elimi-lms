@@ -36,7 +36,8 @@ export const AdminSidebarLogo: React.FC<AdminSidebarLogoProps> = ({
           width={80}
           height={32}
           priority
-          className="object-cover"
+          className="object-contain"
+          style={{ width: "auto", height: "auto" }}
         />
       </Link>
 

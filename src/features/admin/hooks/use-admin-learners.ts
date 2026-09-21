@@ -16,8 +16,6 @@ export function useAdminLearners() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<LearnersViewMode>("list");
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 39;
 
   // Modals state
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
@@ -78,9 +76,6 @@ export function useAdminLearners() {
     },
     viewMode,
     setViewMode,
-    currentPage,
-    setCurrentPage,
-    totalPages,
     isEnrollOpen,
     enrollForm,
     setEnrollForm,

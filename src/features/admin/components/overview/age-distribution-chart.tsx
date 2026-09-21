@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { LuChevronDown } from "react-icons/lu";
-import { DEFAULT_AGE_DISTRIBUTION } from "../../constants/overview-data";
 import type { AgeDistributionData } from "../../types/overview";
 
 export interface AgeDistributionChartProps {
@@ -11,12 +10,19 @@ export interface AgeDistributionChartProps {
 }
 
 export const AgeDistributionChart: React.FC<AgeDistributionChartProps> = ({
-  data = DEFAULT_AGE_DISTRIBUTION,
+  data = { centerMetric: "0", segments: [] },
 }) => {
   const [selectedYear, setSelectedYear] = useState("2026");
 
+  const total = data.segments.reduce((acc, s) => acc + s.count, 0);
+
+  const chartData =
+    total > 0
+      ? data.segments.filter((s) => s.count > 0)
+      : [{ name: "No Data", count: 1, color: "#E5E7EB", percentage: 100 }];
+
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-2xs border border-gray-100 flex flex-col justify-between select-none h-full">
+    <div className="bg-white rounded-2xl p-5 shadow-2xs border border-gray-100 flex flex-col justify-between select-none h-full min-h-75">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base sm:text-lg font-bold text-neutral-primary tracking-tight">
           Age Distribution
@@ -40,7 +46,7 @@ export const AgeDistributionChart: React.FC<AgeDistributionChartProps> = ({
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={[...data.segments]}
+              data={chartData}
               dataKey="count"
               cx="50%"
               cy="50%"
@@ -50,46 +56,57 @@ export const AgeDistributionChart: React.FC<AgeDistributionChartProps> = ({
               startAngle={90}
               endAngle={-270}
             >
-              {data.segments.map((segment) => (
+              {chartData.map((segment) => (
                 <Cell key={segment.name} fill={segment.color} />
               ))}
             </Pie>
-            <Tooltip
-              formatter={(value: unknown, name: unknown) => [
-                Number(value).toLocaleString(),
-                String(name),
-              ]}
-              contentStyle={{
-                backgroundColor: "#1F2937",
-                border: "none",
-                borderRadius: "8px",
-                color: "#FFFFFF",
-                fontSize: "12px",
-              }}
-            />
+            {total > 0 && (
+              <Tooltip
+                formatter={(value: unknown, name: unknown) => [
+                  Number(value).toLocaleString(),
+                  String(name),
+                ]}
+                contentStyle={{
+                  backgroundColor: "#1F2937",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#FFFFFF",
+                  fontSize: "12px",
+                }}
+              />
+            )}
           </PieChart>
         </ResponsiveContainer>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-2xl font-bold text-neutral-primary tracking-tight">
-            {data.centerMetric}
+            {total.toLocaleString()}
+          </span>
+          <span className="text-[11px] text-gray-400 font-medium">
+            Total Learners
           </span>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 mt-2 pt-2 border-t border-gray-50 text-xs font-semibold text-neutral-secondary">
-        {data.segments.map((segment) => (
-          <div key={segment.name} className="flex items-center gap-1.5">
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ backgroundColor: segment.color }}
-            />
-            <span>
-              {segment.name} {segment.count.toLocaleString()} (
-              {segment.percentage}%)
-            </span>
-          </div>
-        ))}
+        {total > 0 ? (
+          data.segments.map((segment) => (
+            <div key={segment.name} className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: segment.color }}
+              />
+              <span>
+                {segment.name} {segment.count.toLocaleString()} (
+                {segment.percentage}%)
+              </span>
+            </div>
+          ))
+        ) : (
+          <span className="text-gray-400 text-xs">
+            No learner demographics recorded yet
+          </span>
+        )}
       </div>
     </div>
   );

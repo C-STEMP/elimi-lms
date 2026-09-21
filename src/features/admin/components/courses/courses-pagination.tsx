@@ -7,12 +7,32 @@ export interface CoursesPaginationProps {
   onPageChange: (page: number) => void;
 }
 
+function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "...", totalPages];
+  }
+
+  if (currentPage >= totalPages - 3) {
+    return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+}
+
 export const CoursesPagination: React.FC<CoursesPaginationProps> = ({
   currentPage,
-  totalPages = 39,
+  totalPages = 1,
   onPageChange,
 }) => {
-  const pages: (number | string)[] = [1, 2, 3, "...", 38, 39];
+  if (!totalPages || totalPages <= 1) {
+    return null;
+  }
+
+  const pages = getPageNumbers(currentPage, totalPages);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs py-3.5 px-4 flex items-center justify-center gap-1.5 select-none mt-2">

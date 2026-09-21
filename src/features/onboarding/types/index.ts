@@ -10,6 +10,8 @@ export type PersonalDetails = {
   middleName?: string;
   gender: string;
   dob?: string;
+  passportAssetId?: string;
+  passportUrl?: string;
 };
 
 export type ContactInformation = {
@@ -19,7 +21,6 @@ export type ContactInformation = {
   };
 };
 
-/** country / state / lga must match Orchestrator Address reference data. */
 export type ResidentialAddress = {
   country: string;
   state: string;
@@ -32,6 +33,8 @@ export type LearnerOnboardingPayload = {
   personalDetails?: PersonalDetails;
   contactInformation?: ContactInformation;
   residentialAddress?: ResidentialAddress;
+  passportAssetId?: string;
+  passportUrl?: string;
 };
 
 export type InstructorOnboardingPayload = LearnerOnboardingPayload & {
@@ -62,3 +65,22 @@ export type OnboardingSummary = {
 export type OnboardingRecord = OnboardingSummary & {
   data: OnboardingPayload;
 };
+
+export interface FormState {
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  gender: string;
+  dob: string;
+  countryCode: string;
+  phoneNumber: string;
+  country: string;
+  state: string;
+  lga: string;
+  address: string;
+};
+
+export interface PersonalInfoFormProps {
+  persona: LmsPersonaType;
+  onSuccess: () => void;
+}

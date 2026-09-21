@@ -20,7 +20,7 @@ export function useAdminEnrollment() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<EnrollmentViewMode>("list");
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 39;
+  const PAGE_SIZE = 10;
 
   // Modals state
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
@@ -50,6 +50,13 @@ export function useAdminEnrollment() {
     );
   }, [mappedEnrollments, searchQuery]);
 
+  const totalPages = Math.ceil(filteredEnrollments.length / PAGE_SIZE);
+
+  const paginatedEnrollments = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredEnrollments.slice(start, start + PAGE_SIZE);
+  }, [filteredEnrollments, currentPage]);
+
   const handleEnrollSubmit = async () => {
     const isSponsored = enrollForm.enrollmentType === "sponsored";
     try {
@@ -67,12 +74,17 @@ export function useAdminEnrollment() {
     setIsEnrollSuccessOpen(true);
   };
 
+  const handleSetSearchQuery = (q: string) => {
+    setSearchQuery(q);
+    setCurrentPage(1);
+  };
+
   return {
-    enrollments: filteredEnrollments,
+    enrollments: paginatedEnrollments,
     isLoading: enrollmentsQuery.isLoading,
     isError: enrollmentsQuery.isError,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSetSearchQuery,
     viewMode,
     setViewMode,
     currentPage,

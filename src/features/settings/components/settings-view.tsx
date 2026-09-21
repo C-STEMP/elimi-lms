@@ -1,18 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { SettingsSidebar } from "./settings-sidebar";
 import { PersonalInfoTab } from "./personal-info-tab";
 import { SecurityTab } from "./security-tab";
 import { DeleteAccountModal } from "./delete-account-modal";
+import { useOnboarding } from "@/features/onboarding/hooks";
+import { useMe } from "@/features/me/hooks";
 import type { SettingsTab } from "@/features/settings/types";
+import type { LearnerOnboardingPayload } from "@/features/onboarding/types";
+import type { LmsPersonaType } from "@/shared/types";
 
 export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const { data: me } = useMe();
+  const persona: LmsPersonaType = me?.personas?.[0]?.persona || "learner";
+  const { data: onboarding } = useOnboarding(persona);
+  const payload = onboarding?.data as LearnerOnboardingPayload | undefined;
+  const savedAvatar =
+    payload?.passportUrl || payload?.personalDetails?.passportUrl || null;
+
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (savedAvatar && !avatarSrc) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAvatarSrc(savedAvatar);
+    }
+  }, [savedAvatar, avatarSrc]);
 
   return (
     <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">

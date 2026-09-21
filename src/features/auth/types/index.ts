@@ -16,11 +16,6 @@ export type User = {
   createdAt: string;
 };
 
-export type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
-};
-
 export type GenericMessage = {
   message?: string;
 };
@@ -49,7 +44,7 @@ export type GoogleLoginInput = {
   intents?: string[];
 };
 
-export type GoogleLoginResult = AuthTokens & {
+export type GoogleLoginResult = {
   user: User;
   isNewUser: boolean;
 };
@@ -59,7 +54,7 @@ export type LoginInput = {
   password: string;
 };
 
-export type LoginResult = AuthTokens & {
+export type LoginResult = {
   user: User;
 };
 
@@ -78,14 +73,6 @@ export type ResetPasswordInput = {
   otp: string;
   purpose: "password_reset";
   newPassword: string;
-};
-
-export type RefreshInput = {
-  refreshToken: string;
-};
-
-export type LogoutInput = {
-  refreshToken: string;
 };
 
 export type ChangePasswordInput = {

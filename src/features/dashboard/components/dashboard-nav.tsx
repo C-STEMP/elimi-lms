@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FiBell, FiLogOut, FiMenu, FiX, FiChevronLeft, FiBookOpen } from "react-icons/fi";
 import { Logo } from "@/shared/components/ui/logo";
 import { Avatar } from "@/shared/components/ui/avatar";
+import { LogoutModal } from "@/shared/components/ui/logout-modal";
 import { useLogout } from "@/features/auth/hooks";
 import { useOnboarding } from "@/features/onboarding/hooks";
 
@@ -41,6 +42,7 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
   const { data: onboarding } = useOnboarding("learner");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   const firstName = onboarding?.data?.personalDetails?.firstName;
 
@@ -111,9 +113,9 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
             <button
               type="button"
               aria-label="Log out"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="hidden md:flex w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center text-white transition-colors disabled:opacity-50 cursor-pointer"
+              title="Log out"
+              onClick={() => setIsLogoutOpen(true)}
+              className="hidden md:flex w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center text-white transition-colors cursor-pointer"
             >
               <FiLogOut className="w-4 h-4" />
             </button>
@@ -192,7 +194,7 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
                     type="button"
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      handleLogout();
+                      setIsLogoutOpen(true);
                     }}
                     className="px-3.5 py-2.5 rounded-xl text-sm font-semibold text-red-200 hover:text-white hover:bg-red-500/20 flex items-center gap-2.5 text-left transition-all cursor-pointer w-full"
                   >
@@ -238,6 +240,13 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
           )}
         </div>
       </div>
+
+      <LogoutModal
+        isOpen={isLogoutOpen}
+        onClose={() => setIsLogoutOpen(false)}
+        onConfirm={handleLogout}
+        isLoading={isLoggingOut}
+      />
     </header>
   );
 };

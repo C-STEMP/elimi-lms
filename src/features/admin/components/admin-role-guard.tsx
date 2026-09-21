@@ -1,28 +1,38 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useMe } from "@/features/me/hooks";
+import React, { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useMe, isUserStaffOrAdmin } from "@/features/me/hooks";
 import { InlineSpinner } from "@/shared/components/ui/loader";
-
-const ADMIN_PERSONAS = ["admin", "org_admin", "staff"];
 
 export function AdminRoleGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
   const { data: me, isLoading, isError } = useMe();
 
-  const isStaffOrAdmin =
-    Boolean(me?.staffRole) ||
-    Boolean(me?.capabilities && me.capabilities.length > 0) ||
-    Boolean(me?.personas?.some((p) => ADMIN_PERSONAS.includes(p.persona)));
+  const isStaffOrAdmin = isUserStaffOrAdmin(me);
 
   useEffect(() => {
-    if (!isLoading && (isError || (me && !isStaffOrAdmin))) {
-      router.replace("/dashboard");
-    }
-  }, [isLoading, isError, me, isStaffOrAdmin, router]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (!isLoading) {
+      if (isError || !me || !isStaffOrAdmin) {
+        const redirectParam = pathname
+          ? `?redirect=${encodeURIComponent(pathname)}`
+          : "";
+        router.replace(`/login${redirectParam}`);
+      }
+    }
+  }, [mounted, isLoading, isError, me, isStaffOrAdmin, pathname, router]);
+
+  // Before mounting on client, render the loading container so SSR and initial client match identically
+  if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-input-bg">
         <InlineSpinner className="w-8 h-8 text-primary" />

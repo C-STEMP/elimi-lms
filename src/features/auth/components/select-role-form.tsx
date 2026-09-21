@@ -58,10 +58,11 @@ export const SelectRoleForm: React.FC = () => {
       </div>
 
       <div className="w-full flex flex-col gap-3 xl:gap-4">
-        {ROLES.map((role) => (
+        {ROLES.map((role, idx) => (
           <RoleOptionCard
             key={role.id}
             id={role.id}
+            index={idx}
             title={role.title}
             description={role.description}
             isSelected={selectedRole === role.id}

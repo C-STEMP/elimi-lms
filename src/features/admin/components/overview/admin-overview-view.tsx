@@ -8,10 +8,19 @@ import { TopPerformingCourses } from "./top-performing-courses";
 import { RecentEnrollmentsTable } from "./recent-enrollments-table";
 import { AgeDistributionChart } from "./age-distribution-chart";
 import { AdminOverviewSkeleton } from "./admin-overview-skeleton";
+import { AdminOverviewEmptyView } from "./admin-overview-empty-view";
 import { useAdminOverview } from "../../hooks/use-admin-overview";
 
 export const AdminOverviewView: React.FC = () => {
-  const { stats, recentEnrollments, isLoading } = useAdminOverview();
+  const {
+    stats,
+    hasActivity,
+    monthlyRevenue,
+    topCourses,
+    ageDistribution,
+    recentEnrollments,
+    isLoading,
+  } = useAdminOverview();
 
   if (isLoading) {
     return <AdminOverviewSkeleton />;
@@ -23,23 +32,29 @@ export const AdminOverviewView: React.FC = () => {
 
       <AdminStatsGrid stats={stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <FinancialAnalyticsChart />
-        </div>
-        <div className="lg:col-span-1">
-          <TopPerformingCourses />
-        </div>
-      </div>
+      {!hasActivity ? (
+        <AdminOverviewEmptyView />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <FinancialAnalyticsChart data={monthlyRevenue} />
+            </div>
+            <div className="lg:col-span-1">
+              <TopPerformingCourses courses={topCourses} />
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <RecentEnrollmentsTable enrollments={recentEnrollments} />
-        </div>
-        <div className="lg:col-span-1">
-          <AgeDistributionChart />
-        </div>
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <RecentEnrollmentsTable enrollments={recentEnrollments} />
+            </div>
+            <div className="lg:col-span-1">
+              <AgeDistributionChart data={ageDistribution} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

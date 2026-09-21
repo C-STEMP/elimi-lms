@@ -18,7 +18,7 @@ export function useAdminPayments() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [viewMode, setViewMode] = useState<PaymentsViewMode>("list");
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 39;
+  const PAGE_SIZE = 10;
 
   // Receipt Modal
   const [selectedReceipt, setSelectedReceipt] = useState<TransactionItem | null>(null);
@@ -42,6 +42,13 @@ export function useAdminPayments() {
       return matchesSearch && matchesStatus;
     });
   }, [transactions, searchQuery, statusFilter]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredTransactions.slice(start, start + PAGE_SIZE);
+  }, [filteredTransactions, currentPage]);
 
   const openReceipt = (tx: TransactionItem) => {
     setSelectedReceipt(tx);
@@ -82,12 +89,22 @@ export function useAdminPayments() {
 
   const closeDepositSuccess = () => setIsDepositSuccessOpen(false);
 
+  const handleSetSearchQuery = (q: string) => {
+    setSearchQuery(q);
+    setCurrentPage(1);
+  };
+
+  const handleSetStatusFilter = (status: string) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  };
+
   return {
-    transactions: filteredTransactions,
+    transactions: paginatedTransactions,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSetSearchQuery,
     statusFilter,
-    setStatusFilter,
+    setStatusFilter: handleSetStatusFilter,
     viewMode,
     setViewMode,
     currentPage,

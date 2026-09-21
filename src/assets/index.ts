@@ -5,6 +5,12 @@ import googleIcon from "@/assets/icons/google.svg";
 import successCheckmarkImg from "@/assets/icons/success-checkmark.png";
 
 import warningSignIcon from "@/assets/icons/warning-sign.svg";
+import cardWhite from "@/assets/icons/card-white.png";
+import cardYellow from "@/assets/icons/card-yellow.png";
+import cardRed from "@/assets/icons/card-red.png";
+import cardBlack from "@/assets/icons/card-black.png";
+
+export { cardWhite, cardYellow, cardRed, cardBlack };
 
 export const ASSETS_URL = {
   logoIcon,
@@ -13,4 +19,9 @@ export const ASSETS_URL = {
   googleIcon,
   successCheckmarkImg,
   warningSignIcon,
+  cardWhite,
+  cardYellow,
+  cardRed,
+  cardBlack,
 };
+

@@ -23,8 +23,6 @@ export function useAdminCourses() {
 
   const [activeTab, setActiveTab] = useState<AdminCourseFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 39;
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -105,9 +103,6 @@ export function useAdminCourses() {
     setActiveTab,
     searchQuery,
     setSearchQuery,
-    currentPage,
-    setCurrentPage,
-    totalPages,
     isCreateOpen,
     createStep,
     setCreateStep,
