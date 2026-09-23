@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { Input } from "@/shared/components/ui/input";
 
 export interface ConfigContactSectionProps {
   email: string;
@@ -20,31 +23,21 @@ export const ConfigContactSection: React.FC<ConfigContactSectionProps> = ({
       </h2>
 
       <div className="space-y-4 max-w-4xl">
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Email Address
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            placeholder="Type Here"
-            className="w-full px-4 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <Input
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          placeholder="Type Here"
+        />
 
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => onPhoneChange(e.target.value)}
-            placeholder="Type Here"
-            className="w-full px-4 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <Input
+          label="Phone Number"
+          type="tel"
+          value={phone}
+          onChange={(e) => onPhoneChange(e.target.value)}
+          placeholder="Type Here"
+        />
       </div>
     </div>
   );

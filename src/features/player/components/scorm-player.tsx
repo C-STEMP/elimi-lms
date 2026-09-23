@@ -65,6 +65,9 @@ export function ScormPlayer({
     const runtime = new ScormRuntime({
       learnerId,
       learnerName,
+      initialLessonStatus: session.cmi?.lessonStatus,
+      initialSuspendData: session.cmi?.suspendData,
+      initialLessonLocation: session.cmi?.location,
       onCommit: (snapshot) => {
         commitCmi.mutate({ sessionId: session.sessionId, input: snapshot });
       },

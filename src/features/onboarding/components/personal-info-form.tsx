@@ -42,7 +42,6 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
   >({});
   const [hydrated, setHydrated] = useState(false);
   const [, setPassportFile] = useState<File | null>(null);
-  const [passportAssetId, setPassportAssetId] = useState<string>("");
   const [passportUrl, setPassportUrl] = useState<string>("");
   const [passportError, setPassportError] = useState<string>("");
 
@@ -74,11 +73,8 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
       address: payload.residentialAddress?.address ?? "",
     });
 
-    const initialPassportAssetId =
-      payload.personalDetails?.passportAssetId || payload.passportAssetId || "";
     const initialPassportUrl =
       payload.personalDetails?.passportUrl || payload.passportUrl || "";
-    if (initialPassportAssetId) setPassportAssetId(initialPassportAssetId);
     if (initialPassportUrl) setPassportUrl(initialPassportUrl);
 
     setHydrated(true);
@@ -108,11 +104,7 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
       middleName: form.middleName.trim() || undefined,
       gender: form.gender,
       dob: toIsoDate(form.dob),
-      passportAssetId: passportAssetId || undefined,
-      passportUrl: passportUrl || undefined,
     },
-    passportAssetId: passportAssetId || undefined,
-    passportUrl: passportUrl || undefined,
     contactInformation: form.phoneNumber
       ? {
           phoneNumber: {
@@ -208,10 +200,8 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                 asset?.url || (file ? URL.createObjectURL(file) : "");
               if (file || previewUrl) {
                 setPassportError("");
-                setPassportAssetId(asset?.assetId || "");
                 setPassportUrl(previewUrl);
               } else {
-                setPassportAssetId("");
                 setPassportUrl("");
               }
             }}

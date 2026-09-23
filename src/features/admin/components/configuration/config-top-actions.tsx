@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { LuSave } from "react-icons/lu";
+import { Button } from "@/shared/components/ui/button";
 
 export interface ConfigTopActionsProps {
   onSave: () => void;
@@ -12,15 +15,15 @@ export const ConfigTopActions: React.FC<ConfigTopActionsProps> = ({
 }) => {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-3.5 flex items-center justify-end select-none">
-      <button
-        type="button"
-        disabled={isSaving}
+      <Button
+        variant="secondary"
+        size="md"
+        loading={isSaving}
         onClick={onSave}
-        className="flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-secondary hover:bg-secondary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs transition-colors cursor-pointer shadow-2xs"
+        rightIcon={<LuSave className="w-4 h-4" />}
       >
-        <span>{isSaving ? "Saving..." : "Save"}</span>
-        <LuSave className="w-4 h-4" />
-      </button>
+        {isSaving ? "Saving..." : "Save"}
+      </Button>
     </div>
   );
 };

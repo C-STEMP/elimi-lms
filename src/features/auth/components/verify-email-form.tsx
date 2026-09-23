@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { useToast } from "@/shared/components/ui/toast";
 import { StatusModal } from "@/shared/components/ui/status-modal";
 import { useVerifyAccount, useResendOtp } from "@/features/auth/hooks";
+import { roleStorage } from "@/shared/lib/role-storage";
 
 export const VerifyEmailForm: React.FC = () => {
   const [code, setCode] = useState<string[]>(["", "", "", ""]);
@@ -127,7 +128,7 @@ export const VerifyEmailForm: React.FC = () => {
   useEffect(() => {
     if (showSuccessModal) {
       const timer = setTimeout(() => {
-        router.push("/onboarding");
+        router.push(roleStorage.getRole() === "learner" ? "/dashboard" : "/onboarding");
       }, 1500);
       return () => clearTimeout(timer);
     }
@@ -210,7 +211,9 @@ export const VerifyEmailForm: React.FC = () => {
 
       <StatusModal
         isOpen={showSuccessModal}
-        onClose={() => router.push("/onboarding")}
+        onClose={() =>
+          router.push(roleStorage.getRole() === "learner" ? "/dashboard" : "/onboarding")
+        }
         type="success"
         title="Congratulations"
         description="Your account was created successfully."

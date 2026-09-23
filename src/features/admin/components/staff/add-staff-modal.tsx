@@ -3,6 +3,9 @@
 import React from "react";
 import { Modal } from "antd";
 import { LuX } from "react-icons/lu";
+import { Input } from "@/shared/components/ui/input";
+import { Select } from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
 import { STAFF_ROLE_OPTIONS } from "../../constants/staff-data";
 import type { AddStaffFormData } from "../../types/staff";
 
@@ -35,14 +38,21 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({
       centered
       width={460}
       styles={{
-        mask: { backdropFilter: "blur(2px)", backgroundColor: "rgba(0, 0, 0, 0.4)" },
+        mask: {
+          backdropFilter: "blur(2px)",
+          backgroundColor: "rgba(0, 0, 0, 0.4)",
+        },
         body: { padding: "1.75rem" },
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-neutral-primary">Add Staff</h2>
-          <p className="text-[11px] text-gray-400 mt-0.5">Lorem ipsum dolor</p>
+          <h2 className="text-base sm:text-lg font-bold text-neutral-primary">
+            Add Staff
+          </h2>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Invite and assign administrative privileges
+          </p>
         </div>
         <button
           type="button"
@@ -55,67 +65,51 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Staff Name
-          </label>
-          <input
-            type="text"
-            value={data.name}
-            onChange={(e) =>
-              onChange((prev) => ({ ...prev, name: e.target.value }))
-            }
-            placeholder="Type Here"
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <Input
+          label="Staff Name"
+          type="text"
+          value={data.name}
+          onChange={(e) =>
+            onChange((prev) => ({ ...prev, name: e.target.value }))
+          }
+          placeholder="Type Here"
+        />
 
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Enter Email Address
-          </label>
-          <input
-            type="email"
-            value={data.email}
-            onChange={(e) =>
-              onChange((prev) => ({ ...prev, email: e.target.value }))
-            }
-            placeholder="Type Here"
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <Input
+          label="Enter Email Address"
+          type="email"
+          value={data.email}
+          onChange={(e) =>
+            onChange((prev) => ({ ...prev, email: e.target.value }))
+          }
+          placeholder="Type Here"
+        />
 
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Select Role
-          </label>
-          <select
-            value={data.role}
-            onChange={(e) =>
-              onChange((prev) => ({
-                ...prev,
-                role: e.target.value as AddStaffFormData["role"],
-              }))
-            }
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+        <Select
+          label="Select Role"
+          placeholder="Select"
+          value={data.role}
+          options={STAFF_ROLE_OPTIONS}
+          onChange={(e) =>
+            onChange((prev) => ({
+              ...prev,
+              role: e.target.value as AddStaffFormData["role"],
+            }))
+          }
+        />
+
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            fullWidth
+            disabled={!isFormValid}
+            onClick={onSubmit}
           >
-            <option value="">Select</option>
-            {STAFF_ROLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            Add Staff
+          </Button>
         </div>
-
-        <button
-          type="button"
-          disabled={!isFormValid}
-          onClick={onSubmit}
-          className="w-full py-3 mt-2 rounded-xl bg-secondary hover:bg-secondary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors cursor-pointer shadow-2xs"
-        >
-          Add Staff
-        </button>
       </div>
     </Modal>
   );

@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { Input } from "@/shared/components/ui/input";
 
 export interface SponsoredOrgFieldsProps {
   organizationName: string;
@@ -15,30 +18,20 @@ export const SponsoredOrgFields: React.FC<SponsoredOrgFieldsProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label className="block text-xs font-semibold text-neutral-primary mb-1">
-          Organization Name
-        </label>
-        <input
-          type="text"
-          value={organizationName}
-          onChange={(e) => onChangeName(e.target.value)}
-          placeholder="Type Here"
-          className="w-full px-3 py-2 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-neutral-primary mb-1">
-          Organization Email
-        </label>
-        <input
-          type="email"
-          value={organizationEmail}
-          onChange={(e) => onChangeEmail(e.target.value)}
-          placeholder="Type Here"
-          className="w-full px-3 py-2 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
+      <Input
+        label="Organization Name"
+        type="text"
+        value={organizationName}
+        onChange={(e) => onChangeName(e.target.value)}
+        placeholder="Type Here"
+      />
+      <Input
+        label="Organization Email"
+        type="email"
+        value={organizationEmail}
+        onChange={(e) => onChangeEmail(e.target.value)}
+        placeholder="Type Here"
+      />
     </div>
   );
 };

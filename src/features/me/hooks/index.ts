@@ -20,7 +20,7 @@ export function useMe() {
   });
 }
 
-/** Where a user should land post-auth: admin portal, onboarding, or learner dashboard. */
+/** Where a user should land post-auth: admin portal, or learner dashboard. */
 export function getPostAuthRedirect(
   me: LmsMe | undefined,
   redirectUrl?: string | null
@@ -37,10 +37,6 @@ export function getPostAuthRedirect(
     !redirectUrl.startsWith("/admin")
   ) {
     return redirectUrl;
-  }
-  const learner = me?.personas.find((persona) => persona.persona === "learner");
-  if (!learner || learner.onboardingStatus === "draft") {
-    return "/onboarding";
   }
   return "/dashboard";
 }

@@ -3,6 +3,8 @@
 import React from "react";
 import { Modal } from "antd";
 import { LuX } from "react-icons/lu";
+import { Select } from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
 import {
   ENROLLMENT_TYPE_OPTIONS,
   ORGANIZATION_OPTIONS,
@@ -48,7 +50,9 @@ export const EnrollLearnerModal: React.FC<EnrollLearnerModalProps> = ({
           <h2 className="text-base sm:text-lg font-bold text-neutral-primary">
             Enroll Learner
           </h2>
-          <p className="text-[11px] text-gray-400 mt-0.5">Lorem ipsum dolor</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Assign learner to specific curriculum and cohort
+          </p>
         </div>
         <button
           type="button"
@@ -61,77 +65,52 @@ export const EnrollLearnerModal: React.FC<EnrollLearnerModalProps> = ({
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Enrollment Type
-          </label>
-          <select
-            value={data.enrollmentType}
-            onChange={(e) =>
-              onChange((prev) => ({
-                ...prev,
-                enrollmentType: e.target.value as "sponsored" | "unsponsored",
-              }))
-            }
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-          >
-            {ENROLLMENT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Enrollment Type"
+          placeholder="Select"
+          options={ENROLLMENT_TYPE_OPTIONS}
+          value={data.enrollmentType}
+          onChange={(e) =>
+            onChange((prev) => ({
+              ...prev,
+              enrollmentType: e.target.value as "sponsored" | "unsponsored",
+            }))
+          }
+        />
 
         {isSponsored && (
-          <div>
-            <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-              Select Organization
-            </label>
-            <select
-              value={data.organization}
-              onChange={(e) =>
-                onChange((prev) => ({ ...prev, organization: e.target.value }))
-              }
-              className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-            >
-              <option value="">Select</option>
-              {ORGANIZATION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Select Organization"
+            placeholder="Select"
+            options={ORGANIZATION_OPTIONS}
+            value={data.organization}
+            onChange={(e) =>
+              onChange((prev) => ({ ...prev, organization: e.target.value }))
+            }
+          />
         )}
 
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Select Course
-          </label>
-          <select
-            value={data.courseId}
-            onChange={(e) =>
-              onChange((prev) => ({ ...prev, courseId: e.target.value }))
-            }
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-          >
-            <option value="">Select</option>
-            {LEARNER_COURSE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.label}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Select Course"
+          placeholder="Select"
+          options={LEARNER_COURSE_OPTIONS}
+          value={data.courseId}
+          onChange={(e) =>
+            onChange((prev) => ({ ...prev, courseId: e.target.value }))
+          }
+        />
 
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="w-full py-3 mt-3 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-sm transition-colors cursor-pointer shadow-2xs"
-        >
-          Export
-        </button>
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={onSubmit}
+          >
+            Enroll Learner
+          </Button>
+        </div>
       </div>
     </Modal>
   );

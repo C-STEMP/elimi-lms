@@ -99,6 +99,7 @@ export function useAdminCourses() {
     isLoading: authoringQuery.isLoading,
     isSubmitting,
     isError: authoringQuery.isError,
+    error: authoringQuery.error,
     activeTab,
     setActiveTab,
     searchQuery,

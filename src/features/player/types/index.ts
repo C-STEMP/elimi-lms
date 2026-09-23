@@ -14,15 +14,6 @@ export type ItemProgressWrite = {
   percent?: number;
 };
 
-export type ScormSession = {
-  sessionId: string;
-  enrollmentId: string;
-  itemId: string;
-  packageAssetId?: string;
-  scoHref?: string | null;
-  launchUrl: string;
-};
-
 export type ScormLessonStatus = "incomplete" | "completed" | "passed" | "failed";
 
 export type ScormCmiCommit = {
@@ -32,6 +23,23 @@ export type ScormCmiCommit = {
   sessionTime?: string;
   suspendData?: string;
   location?: string;
+};
+
+/** Last-committed CMI snapshot, same shape as a commit. */
+export type ScormCmiSnapshot = ScormCmiCommit;
+
+export type ScormSession = {
+  sessionId: string;
+  enrollmentId: string;
+  itemId: string;
+  packageAssetId?: string;
+  scoHref?: string | null;
+  launchUrl: string;
+  /**
+   * Present once the learner has made at least one `POST .../cmi` commit.
+   * Omitted on a first-ever launch so the player initializes cold.
+   */
+  cmi?: ScormCmiSnapshot;
 };
 
 export type { ProgressSnapshot, ItemProgress } from "@/shared/types";

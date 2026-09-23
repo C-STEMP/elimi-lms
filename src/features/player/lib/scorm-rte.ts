@@ -38,13 +38,17 @@ const VALID_LESSON_STATUS = new Set([
   "not attempted",
 ]);
 
-function buildInitialCmi(learnerId: string, learnerName: string): Record<string, CmiField> {
+function buildInitialCmi(
+  learnerId: string,
+  learnerName: string,
+  isResume: boolean
+): Record<string, CmiField> {
   return {
     "cmi.core.student_id": { value: learnerId, access: "read" },
     "cmi.core.student_name": { value: learnerName, access: "read" },
     "cmi.core.lesson_status": { value: "not attempted", access: "read-write" },
     "cmi.core.credit": { value: "credit", access: "read" },
-    "cmi.core.entry": { value: "ab-initio", access: "read" },
+    "cmi.core.entry": { value: isResume ? "resume" : "ab-initio", access: "read" },
     "cmi.core.total_time": { value: "0000:00:00.00", access: "read" },
     "cmi.core.lesson_mode": { value: "normal", access: "read" },
     "cmi.core.exit": { value: "", access: "write" },
@@ -70,12 +74,7 @@ function buildInitialCmi(learnerId: string, learnerName: string): Record<string,
 export type ScormRuntimeOptions = {
   learnerId: string;
   learnerName: string;
-  /**
-   * Prior CMI state for resuming a session. The current `GET
-   * /player/scorm/{sessionId}` contract doesn't return this (only launch
-   * metadata), so these are always empty until that endpoint is extended —
-   * every launch effectively starts a fresh attempt.
-   */
+  /** Prior CMI state for resuming a session, from `ScormSession.cmi`. */
   initialLessonStatus?: ScormLessonStatus;
   initialSuspendData?: string;
   initialLessonLocation?: string;
@@ -98,7 +97,10 @@ export class ScormRuntime {
   private readonly startedAt = Date.now();
 
   constructor(options: ScormRuntimeOptions) {
-    this.cmi = buildInitialCmi(options.learnerId, options.learnerName);
+    const isResume = Boolean(
+      options.initialSuspendData || options.initialLessonLocation
+    );
+    this.cmi = buildInitialCmi(options.learnerId, options.learnerName, isResume);
     if (options.initialLessonStatus) {
       this.cmi["cmi.core.lesson_status"].value = options.initialLessonStatus;
     }

@@ -3,6 +3,9 @@
 import React from "react";
 import { Modal } from "antd";
 import { LuX, LuPlus } from "react-icons/lu";
+import { Input } from "@/shared/components/ui/input";
+import { Select } from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
 import { SponsoredOrgFields } from "./sponsored-org-fields";
 import { EnrollmentTemplateUpload } from "./enrollment-template-upload";
 import { ENROLLMENT_TYPE_OPTIONS } from "../../constants/learners-data";
@@ -39,14 +42,21 @@ export const EnrollLearnersModal: React.FC<EnrollLearnersModalProps> = ({
       centered
       width={520}
       styles={{
-        mask: { backdropFilter: "blur(2px)", backgroundColor: "rgba(0, 0, 0, 0.4)" },
+        mask: {
+          backdropFilter: "blur(2px)",
+          backgroundColor: "rgba(0, 0, 0, 0.4)",
+        },
         body: { padding: "1.75rem" },
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-neutral-primary">Enroll Learners</h2>
-          <p className="text-[11px] text-gray-400 mt-0.5">Lorem ipsum dolor, dolor isjhe aiyuej sjskw</p>
+          <h2 className="text-base sm:text-lg font-bold text-neutral-primary">
+            Enroll Learners
+          </h2>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Bulk ingestion and registration of learner cohort
+          </p>
         </div>
         <button
           type="button"
@@ -58,60 +68,68 @@ export const EnrollLearnersModal: React.FC<EnrollLearnersModalProps> = ({
         </button>
       </div>
 
-      <div className="space-y-3 max-h-[72vh] overflow-y-auto pr-1">
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1">Enrollment Type</label>
-          <select
-            value={data.enrollmentType}
-            onChange={(e) => onChange((prev) => ({ ...prev, enrollmentType: e.target.value as "sponsored" | "unsponsored" }))}
-            className="w-full px-3 py-2 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-          >
-            {ENROLLMENT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
+      <div className="space-y-3.5 max-h-[72vh] overflow-y-auto pr-1">
+        <Select
+          label="Enrollment Type"
+          placeholder="Select Type"
+          value={data.enrollmentType}
+          options={ENROLLMENT_TYPE_OPTIONS}
+          onChange={(e) =>
+            onChange((prev) => ({
+              ...prev,
+              enrollmentType: e.target.value as "sponsored" | "unsponsored",
+            }))
+          }
+        />
 
         {isSponsored && (
           <SponsoredOrgFields
             organizationName={data.organizationName}
             organizationEmail={data.organizationEmail}
-            onChangeName={(val) => onChange((prev) => ({ ...prev, organizationName: val }))}
-            onChangeEmail={(val) => onChange((prev) => ({ ...prev, organizationEmail: val }))}
+            onChangeName={(val) =>
+              onChange((prev) => ({ ...prev, organizationName: val }))
+            }
+            onChangeEmail={(val) =>
+              onChange((prev) => ({ ...prev, organizationEmail: val }))
+            }
           />
         )}
 
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1">Number Of Students</label>
-          <input
-            type="number"
-            value={data.numberOfStudents}
-            onChange={(e) => onChange((prev) => ({ ...prev, numberOfStudents: e.target.value }))}
-            placeholder="Type Here"
-            className="w-full px-3 py-2 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <Input
+          label="Number Of Students"
+          type="number"
+          value={data.numberOfStudents}
+          onChange={(e) =>
+            onChange((prev) => ({
+              ...prev,
+              numberOfStudents: e.target.value,
+            }))
+          }
+          placeholder="Type Here"
+        />
 
         {data.courses.map((course, idx) => (
-          <div key={idx}>
-            <label className="block text-xs font-semibold text-neutral-primary mb-1">Select Course</label>
-            <select
-              value={course}
-              onChange={(e) => onUpdateCourse(idx, e.target.value)}
-              className="w-full px-3 py-2 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer mb-2"
-            >
-              <option value="">Select</option>
-              {ENROLLMENT_COURSE_OPTIONS.map((c) => (
-                <option key={c.value} value={c.label}>{c.label}</option>
-              ))}
-            </select>
-          </div>
+          <Select
+            key={idx}
+            label={idx === 0 ? "Select Course" : undefined}
+            placeholder="Select Course"
+            value={course}
+            options={ENROLLMENT_COURSE_OPTIONS.map((c) => ({
+              label: c.label,
+              value: c.label,
+            }))}
+            onChange={(e) => onUpdateCourse(idx, e.target.value)}
+          />
         ))}
 
-        <EnrollmentTemplateUpload
-          fileName={data.templateFile?.name}
-          onFileSelect={(file) => onChange((prev) => ({ ...prev, templateFile: file }))}
-        />
+        <div className="pt-1">
+          <EnrollmentTemplateUpload
+            fileName={data.templateFile?.name}
+            onFileSelect={(file) =>
+              onChange((prev) => ({ ...prev, templateFile: file }))
+            }
+          />
+        </div>
 
         <button
           type="button"
@@ -122,13 +140,17 @@ export const EnrollLearnersModal: React.FC<EnrollLearnersModalProps> = ({
           <span>Add Course</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="w-full py-3 mt-2 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-sm transition-colors cursor-pointer shadow-2xs"
-        >
-          Enroll Learners
-        </button>
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={onSubmit}
+          >
+            Enroll Learners
+          </Button>
+        </div>
       </div>
     </Modal>
   );

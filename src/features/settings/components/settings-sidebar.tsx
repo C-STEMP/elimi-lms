@@ -5,11 +5,7 @@ import { FiUpload } from "react-icons/fi";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { useToast } from "@/shared/components/ui/toast";
 import { useUploadFile } from "@/features/storage/hooks";
-import { useOnboarding, useSaveOnboarding } from "@/features/onboarding/hooks";
-import { useMe } from "@/features/me/hooks";
 import type { SettingsTab } from "@/features/settings/types";
-import type { LearnerOnboardingPayload } from "@/features/onboarding/types";
-import type { LmsPersonaType } from "@/shared/types";
 
 interface SettingsSidebarProps {
   avatarSrc: string | null;
@@ -29,10 +25,6 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { mutate: uploadFile, isPending: isUploading } = useUploadFile();
-  const { data: me } = useMe();
-  const persona: LmsPersonaType = me?.personas?.[0]?.persona || "learner";
-  const { data: onboarding } = useOnboarding(persona);
-  const { mutate: saveOnboarding } = useSaveOnboarding(persona);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,39 +38,15 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       {
         onSuccess: (asset) => {
           onAvatarChange(asset.url);
-          const currentData =
-            (onboarding?.data as LearnerOnboardingPayload | undefined) || {};
-          const payload: LearnerOnboardingPayload = {
-            ...currentData,
-            passportAssetId: asset.assetId,
-            passportUrl: asset.url,
-            ...(currentData.personalDetails
-              ? {
-                  personalDetails: {
-                    ...currentData.personalDetails,
-                    passportAssetId: asset.assetId,
-                    passportUrl: asset.url,
-                  },
-                }
-              : {}),
-          };
-          saveOnboarding(payload, {
-              onSuccess: () => {
-                toast({
-                  type: "success",
-                  title: "Profile Photo Updated",
-                  description: "Your new profile photo has been saved.",
-                });
-              },
-              onError: () => {
-                toast({
-                  type: "info",
-                  title: "Photo Uploaded",
-                  description: "Profile photo uploaded.",
-                });
-              },
-            }
-          );
+          // Note: passportAssetId/passportUrl aren't part of the onboarding
+          // API contract (backend rejects them as unrecognized keys), so the
+          // photo isn't persisted server-side yet — only shown for this
+          // session.
+          toast({
+            type: "info",
+            title: "Photo Uploaded",
+            description: "Profile photo uploaded.",
+          });
         },
         onError: () => {
           toast({

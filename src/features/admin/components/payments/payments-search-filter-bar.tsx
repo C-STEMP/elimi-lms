@@ -1,5 +1,9 @@
+"use client";
+
 import React from "react";
 import { LuSearch, LuList, LuLayoutGrid } from "react-icons/lu";
+import { Input } from "@/shared/components/ui/input";
+import { Select } from "@/shared/components/ui/select";
 import { PAYMENT_STATUS_OPTIONS } from "../../constants/payments-data";
 import type { PaymentsViewMode } from "../../types/payments";
 
@@ -22,33 +26,23 @@ export const PaymentsSearchFilterBar: React.FC<PaymentsSearchFilterBarProps> = (
 }) => {
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 border-b border-gray-100 select-none">
-      <div className="relative w-full sm:max-w-xs">
-        <LuSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
+      <div className="w-full sm:max-w-xs">
+        <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search candidates..."
-          className="w-full pl-9 pr-3.5 py-2 bg-input-bg rounded-xl border border-gray-200 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
+          prefix={<LuSearch className="w-4 h-4 text-gray-400" />}
         />
       </div>
 
       <div className="flex items-center gap-2 self-end sm:self-auto">
-        <div className="relative">
-          <select
+        <div className="w-36">
+          <Select
+            placeholder="Status"
+            options={PAYMENT_STATUS_OPTIONS}
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer appearance-none pr-8 focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {PAYMENT_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 text-[10px]">
-            ▼
-          </span>
+          />
         </div>
 
         <div className="flex items-center gap-1">
@@ -56,10 +50,10 @@ export const PaymentsSearchFilterBar: React.FC<PaymentsSearchFilterBarProps> = (
             type="button"
             onClick={() => onViewModeChange("list")}
             aria-label="List view"
-            className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+            className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
               viewMode === "list"
                 ? "border-rose-200 bg-rose-50/60 text-primary"
-                : "border-gray-200 text-gray-400 hover:text-gray-600"
+                : "border-gray-200 text-gray-400 hover:text-gray-600 bg-white"
             }`}
           >
             <LuList className="w-4 h-4" />
@@ -69,10 +63,10 @@ export const PaymentsSearchFilterBar: React.FC<PaymentsSearchFilterBarProps> = (
             type="button"
             onClick={() => onViewModeChange("grid")}
             aria-label="Grid view"
-            className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+            className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
               viewMode === "grid"
                 ? "border-rose-200 bg-rose-50/60 text-primary"
-                : "border-gray-200 text-gray-400 hover:text-gray-600"
+                : "border-gray-200 text-gray-400 hover:text-gray-600 bg-white"
             }`}
           >
             <LuLayoutGrid className="w-4 h-4" />

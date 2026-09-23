@@ -17,7 +17,7 @@ const AdminSidebarContext = createContext<AdminSidebarContextValue | null>(null)
 export const AdminSidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const toggleCollapse = useCallback(() => setIsCollapsed((prev) => !prev), []);

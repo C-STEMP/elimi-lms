@@ -1,10 +1,9 @@
 "use client";
 
-import React from "react";
-import { LuSearch, LuBell, LuLogOut, LuMenu } from "react-icons/lu";
+import React, { useState } from "react";
+import Image from "next/image";
+import { LuSearch, LuBell, LuMenu } from "react-icons/lu";
 import { Avatar } from "@/shared/components/ui/avatar";
-import { useLogout } from "@/features/auth/hooks";
-import { useRouter } from "next/navigation";
 import { useAdminSidebarContext } from "../../context/admin-sidebar-context";
 
 export interface AdminHeaderProps {
@@ -12,82 +11,82 @@ export interface AdminHeaderProps {
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
-  title = "Welcome Back, Admin",
+  title = "Welcome back, Admin",
 }) => {
-  const router = useRouter();
-  const { mutate: logout, isPending } = useLogout();
   const { openMobile } = useAdminSidebarContext();
+  const [searchValue, setSearchValue] = useState("");
 
-  const handleLogout = () => {
-    logout(undefined, {
-      onSuccess: () => router.push("/login"),
-    });
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
   };
 
   return (
-    <header className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-gray-100 flex flex-col gap-3 select-none">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+    <nav className="bg-white shadow-xl rounded-xl pl-4 p-3 flex justify-between items-center gap-1.5 select-none">
+      <div className="flex sm:hidden items-center gap-2">
+        <Image
+          src="/elimi-favicon.svg"
+          alt="Elimi"
+          className="object-contain"
+          width={20}
+          height={20}
+          style={{ width: "auto", height: "auto" }}
+          priority
+        />
+      </div>
+
+      <h2 className="text-sm sm:text-sm md:text-base lg:text-lg text-neutral-primary font-bold truncate">
+        {title}
+      </h2>
+
+      <div className="ml-auto flex gap-2 items-center justify-end pl-4">
+        <form
+          onSubmit={handleSearch}
+          className="hidden lg:flex bg-input-bg p-1 md:py-0.5 rounded-lg flex-1 w-full min-w-xs sm:min-w-sm items-center gap-1.5"
+        >
           <button
-            type="button"
-            onClick={openMobile}
-            aria-label="Open navigation menu"
-            className="lg:hidden p-2 rounded-xl bg-input-bg hover:bg-gray-200 text-neutral-primary transition-colors cursor-pointer shrink-0"
+            type="submit"
+            aria-label="Search"
+            className="p-1 text-neutral-primary text-xs cursor-pointer flex items-center justify-center"
           >
-            <LuMenu className="w-5 h-5" />
+            <LuSearch size={14} />
           </button>
-          <h1 className="text-base sm:text-xl md:text-2xl font-bold text-neutral-primary tracking-tight truncate">
-            {title}
-          </h1>
-        </div>
+          <input
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            type="search"
+            name="search"
+            id="admin-search"
+            placeholder="Search courses, learners, staff..."
+            className="p-0.5 text-sm text-text-dark flex-1 bg-transparent border-none focus:outline-none"
+          />
+        </form>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden lg:block relative w-64">
-            <LuSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search Users, Transactions..."
-              className="w-full pl-9 pr-3 py-2 bg-input-bg border-none rounded-xl text-xs sm:text-sm text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
+        <button
+          type="button"
+          aria-label="Notifications"
+          className="grid place-items-center bg-input-bg p-1 rounded-lg text-neutral-primary text-xs h-6 w-6 sm:h-8 sm:w-8 shrink-0 hover:bg-gray-200 transition-colors cursor-pointer"
+        >
+          <LuBell size={14} />
+        </button>
 
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-input-bg hover:bg-gray-200 flex items-center justify-center text-neutral-primary transition-colors cursor-pointer"
-          >
-            <LuBell className="w-4 h-4" />
-          </button>
-
+        <div className="relative grid place-items-center rounded-3xl overflow-hidden text-neutral-primary text-xs h-6 w-6 sm:h-8 sm:w-8 shrink-0">
           <Avatar
             name="Admin User"
             seed="admin-avatar"
-            size={34}
-            className="ring-2 ring-white shadow-xs cursor-pointer"
+            size={32}
+            className="cursor-pointer"
           />
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={isPending}
-            aria-label="Log Out"
-            title="Log Out"
-            className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-input-bg hover:bg-gray-200 flex items-center justify-center text-neutral-primary transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <LuLogOut className="w-4 h-4" />
-          </button>
         </div>
-      </div>
 
-      {/* Responsive mobile search bar */}
-      <div className="lg:hidden relative w-full">
-        <LuSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search Users, Transactions..."
-          className="w-full pl-9 pr-3 py-2 bg-input-bg border-none rounded-xl text-xs sm:text-sm text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        <button
+          type="button"
+          onClick={openMobile}
+          aria-label="Open menu"
+          className="grid place-items-center bg-input-bg p-1 rounded-lg text-neutral-primary text-xs h-6 w-6 sm:h-8 sm:w-8 shrink-0 cursor-pointer md:hidden hover:bg-gray-200 transition-colors"
+        >
+          <LuMenu size={16} />
+        </button>
       </div>
-    </header>
+    </nav>
   );
 };

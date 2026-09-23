@@ -87,9 +87,9 @@ export const FaqSection: React.FC = () => {
         <div className="mt-10 flex justify-center">
           <Link
             href="/register"
-            className="rounded-full bg-primary-solid hover:bg-primary-hover text-white px-7 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-md active:scale-95"
+            className="rounded-full bg-primary-solid hover:bg-primary-hover text-white px-7 py-2.5 text-xs sm:text-sm font-semibold transition-all shadow-md active:scale-95"
           >
-            Ask another question
+            See more question
           </Link>
         </div>
       </div>

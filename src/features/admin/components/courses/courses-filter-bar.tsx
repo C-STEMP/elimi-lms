@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { LuPlus } from "react-icons/lu";
+import { Button } from "@/shared/components/ui/button";
 import { COURSE_FILTER_TABS } from "../../constants/courses-data";
 import type { AdminCourseFilter } from "../../types/courses";
 
@@ -38,14 +41,14 @@ export const CoursesFilterBar: React.FC<CoursesFilterBarProps> = ({
       </div>
 
       {/* Create Course button */}
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
+        rightIcon={<LuPlus className="w-4 h-4" />}
         onClick={onCreateClick}
-        className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-xs transition-colors cursor-pointer shadow-2xs shrink-0"
       >
-        <span>Create Course</span>
-        <LuPlus className="w-4 h-4" />
-      </button>
+        Create Course
+      </Button>
     </div>
   );
 };

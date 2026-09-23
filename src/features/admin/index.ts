@@ -1,4 +1,5 @@
 export { AdminSidebar } from "./components/admin-sidebar";
+export { AdminLayoutContent } from "./components/admin-layout-content";
 export { AdminMobileDrawer } from "./components/admin-mobile-drawer";
 export { AdminLogoMark } from "./components/admin-logo-mark";
 export { AdminSidebarLogo } from "./components/admin-sidebar-logo";

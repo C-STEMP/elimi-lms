@@ -4,7 +4,13 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { HiMenu, HiX, HiOutlineSearch } from "react-icons/hi";
-import { FiBookOpen, FiAward, FiShield, FiHelpCircle, FiArrowRight } from "react-icons/fi";
+import {
+  FiBookOpen,
+  FiAward,
+  FiShield,
+  FiHelpCircle,
+  FiArrowRight,
+} from "react-icons/fi";
 import { ASSETS_URL } from "@/assets";
 
 const TRADE_LINKS = [
@@ -33,7 +39,7 @@ export const CapsuleNavbar: React.FC = () => {
   }, [menuOpen]);
 
   const filteredTrades = TRADE_LINKS.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -58,8 +64,8 @@ export const CapsuleNavbar: React.FC = () => {
               src={ASSETS_URL.logoIcon2}
               alt="Elimi Logo"
               width={86}
-              height={30}
-              className="h-6 w-auto object-contain"
+              height={50}
+              className="h-10 w-auto object-contain"
               priority
             />
           </Link>
@@ -146,7 +152,9 @@ export const CapsuleNavbar: React.FC = () => {
                     </Link>
                   ))}
                   {filteredTrades.length === 0 && (
-                    <p className="text-xs text-neutral-400 py-2">No matching trades found.</p>
+                    <p className="text-xs text-neutral-400 py-2">
+                      No matching trades found.
+                    </p>
                   )}
                 </div>
               </div>
@@ -208,9 +216,12 @@ export const CapsuleNavbar: React.FC = () => {
 
                 {/* Direct Action Box */}
                 <div className="mt-5 rounded-2xl bg-primary-solid/5 border border-primary-solid/20 p-4">
-                  <p className="text-xs font-bold text-primary-solid">Ready to start learning?</p>
+                  <p className="text-xs font-bold text-primary-solid">
+                    Ready to start learning?
+                  </p>
                   <p className="text-[11px] text-neutral-600 mt-1">
-                    Free account creation for candidates and apprentice artisans.
+                    Free account creation for candidates and apprentice
+                    artisans.
                   </p>
                   <div className="mt-3 flex items-center gap-2">
                     <Link

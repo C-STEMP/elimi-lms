@@ -1,5 +1,5 @@
 import {
-  LuLayoutGrid,
+  LuLayoutDashboard,
   LuBookOpen,
   LuGraduationCap,
   LuUserPlus,
@@ -13,7 +13,7 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   {
     label: "Overview",
     href: "/admin",
-    icon: LuLayoutGrid,
+    icon: LuLayoutDashboard,
     exact: true,
   },
   {

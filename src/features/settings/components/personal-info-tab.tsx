@@ -188,17 +188,7 @@ export const PersonalInfoTab: React.FC = () => {
         middleName: form.middleName.trim() || undefined,
         gender: form.gender,
         dob: isoDob,
-        passportAssetId:
-          payloadRaw?.personalDetails?.passportAssetId ||
-          payloadRaw?.passportAssetId,
-        passportUrl:
-          payloadRaw?.personalDetails?.passportUrl || payloadRaw?.passportUrl,
       },
-      passportAssetId:
-        payloadRaw?.passportAssetId ||
-        payloadRaw?.personalDetails?.passportAssetId,
-      passportUrl:
-        payloadRaw?.passportUrl || payloadRaw?.personalDetails?.passportUrl,
       contactInformation: {
         phoneNumber: {
           countryCode: form.countryCode || "+234",

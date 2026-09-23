@@ -3,6 +3,9 @@
 import React from "react";
 import { Modal } from "antd";
 import { LuX } from "react-icons/lu";
+import { Input } from "@/shared/components/ui/input";
+import { Select } from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
 import {
   ENROLLMENT_ORG_OPTIONS,
   DOCUMENT_TYPE_OPTIONS,
@@ -33,14 +36,21 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({
       centered
       width={460}
       styles={{
-        mask: { backdropFilter: "blur(2px)", backgroundColor: "rgba(0, 0, 0, 0.4)" },
+        mask: {
+          backdropFilter: "blur(2px)",
+          backgroundColor: "rgba(0, 0, 0, 0.4)",
+        },
         body: { padding: "1.75rem" },
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-neutral-primary">Export Data</h2>
-          <p className="text-[11px] text-gray-400 mt-0.5">Lorem ipsum dolor</p>
+          <h2 className="text-base sm:text-lg font-bold text-neutral-primary">
+            Export Data
+          </h2>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Generate and export cohort records to external file
+          </p>
         </div>
         <button
           type="button"
@@ -53,58 +63,47 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Select Organization
-          </label>
-          <select
-            value={data.organization}
-            onChange={(e) => onChange((prev) => ({ ...prev, organization: e.target.value }))}
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+        <Select
+          label="Select Organization"
+          placeholder="Select"
+          options={ENROLLMENT_ORG_OPTIONS}
+          value={data.organization}
+          onChange={(e) =>
+            onChange((prev) => ({ ...prev, organization: e.target.value }))
+          }
+        />
+
+        <Select
+          label="Select Document Type"
+          placeholder="Select"
+          options={DOCUMENT_TYPE_OPTIONS}
+          value={data.documentType}
+          onChange={(e) =>
+            onChange((prev) => ({ ...prev, documentType: e.target.value }))
+          }
+        />
+
+        <Input
+          label="Enter Email Address"
+          type="email"
+          placeholder="Type Here"
+          value={data.email}
+          onChange={(e) =>
+            onChange((prev) => ({ ...prev, email: e.target.value }))
+          }
+        />
+
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={onSubmit}
           >
-            <option value="">Select</option>
-            {ENROLLMENT_ORG_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+            Export
+          </Button>
         </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Select Document Type
-          </label>
-          <select
-            value={data.documentType}
-            onChange={(e) => onChange((prev) => ({ ...prev, documentType: e.target.value }))}
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-          >
-            <option value="">Select</option>
-            {DOCUMENT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
-            Enter Email Address
-          </label>
-          <input
-            type="email"
-            value={data.email}
-            onChange={(e) => onChange((prev) => ({ ...prev, email: e.target.value }))}
-            placeholder="Type Here"
-            className="w-full px-3.5 py-2.5 bg-input-bg rounded-xl border border-gray-100 text-xs text-neutral-primary placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="w-full py-3 mt-2 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-sm transition-colors cursor-pointer shadow-2xs"
-        >
-          Export
-        </button>
       </div>
     </Modal>
   );

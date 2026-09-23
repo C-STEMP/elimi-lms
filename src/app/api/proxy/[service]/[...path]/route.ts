@@ -48,15 +48,13 @@ function buildResponseHeaders(source: Headers): Headers {
 async function forward(
   request: NextRequest,
   upstreamUrl: string,
-  accessToken: string | undefined
+  accessToken: string | undefined,
+  body: ArrayBuffer | undefined
 ): Promise<Response> {
-  const hasBody = !["GET", "HEAD"].includes(request.method);
   return fetch(upstreamUrl, {
     method: request.method,
     headers: buildForwardHeaders(request.headers, accessToken),
-    body: hasBody ? request.body : undefined,
-    // @ts-expect-error -- required by undici when streaming a request body
-    duplex: hasBody ? "half" : undefined,
+    body,
     cache: "no-store",
     redirect: "manual",
   });
@@ -77,9 +75,14 @@ async function handleProxy(
 
   const upstreamUrl = `${baseUrl}/${path.join("/")}${request.nextUrl.search}`;
 
+  // Buffered once so it can be replayed on the refresh-retry below — the
+  // request body stream can only be read a single time.
+  const hasBody = !["GET", "HEAD"].includes(request.method);
+  const body = hasBody ? await request.arrayBuffer() : undefined;
+
   let session: SessionPayload | null = await getSession();
 
-  let upstreamRes = await forward(request, upstreamUrl, session?.accessToken);
+  let upstreamRes = await forward(request, upstreamUrl, session?.accessToken, body);
 
   // A logged-out visitor has no refresh token to retry with — pass the 401 through as-is.
   if (upstreamRes.status === 401 && session?.refreshToken) {
@@ -87,7 +90,7 @@ async function handleProxy(
     if (refreshed) {
       await setSessionCookie(refreshed);
       session = refreshed;
-      upstreamRes = await forward(request, upstreamUrl, session.accessToken);
+      upstreamRes = await forward(request, upstreamUrl, session.accessToken, body);
     }
   }
 

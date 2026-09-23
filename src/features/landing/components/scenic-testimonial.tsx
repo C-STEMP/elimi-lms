@@ -8,7 +8,7 @@ export const ScenicTestimonial: React.FC = () => {
   return (
     <section className="w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
       {/* Scenic Photographic Banner with Rounded Corners */}
-      <div className="relative mx-auto max-w-6xl min-h-[380px] sm:min-h-[460px] rounded-[28px] sm:rounded-[36px] overflow-hidden flex items-center justify-center p-6 sm:p-12 shadow-md">
+      <div className="relative mx-auto max-w-7xl min-h-[380px] sm:min-h-[460px] rounded-[28px] sm:rounded-[36px] overflow-hidden flex items-center justify-center p-6 sm:p-12 shadow-md">
         {/* Background Image */}
         <Image
           src="/hero-img-4.jpg"
@@ -26,7 +26,9 @@ export const ScenicTestimonial: React.FC = () => {
           <BiSolidQuoteLeft className="h-8 w-8 text-primary-solid/30 mb-3" />
 
           <p className="text-sm sm:text-base md:text-lg font-medium text-[#241014] leading-relaxed">
-            &ldquo;Elimi completely changed how I approach trade training. I feel more focused, less pressured, and walked into my CAP physical assessment knowing all the safety checks and formulas.&rdquo;
+            &ldquo;Elimi completely changed how I approach trade training. I
+            feel more focused, less pressured, and walked into my CAP physical
+            assessment knowing all the safety checks and formulas.&rdquo;
           </p>
 
           <div className="mt-6 flex items-center gap-3.5 pt-4 border-t border-neutral-100">
