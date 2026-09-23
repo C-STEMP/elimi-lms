@@ -76,9 +76,7 @@ export const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. MAIN FOOTER BODY: RECTANGLES FADE OUT DOWNWARDS (DO NOT FILL TO BOTTOM) */}
-      <div className="relative bg-[#75152b] text-white pt-20 sm:pt-24 pb-0 px-4 sm:px-6 lg:px-8">
-        {/* CENTRAL WAX SEAL MEDALLION - PLACED EXACTLY ON THE LINE (HALF IN WHITE, HALF IN BURGUNDY) */}
+      <div className="relative bg-primary-solid text-white pt-20 sm:pt-24 pb-0 px-4 sm:px-6 lg:px-8">
         <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none select-none">
           <Image
             src="/elimi-seal-medallion.svg"
@@ -89,7 +87,6 @@ export const Footer: React.FC = () => {
             priority
           />
         </div>
-        {/* Subtle Ambient Rounded-Rectangle Grid that FADES OUT (does NOT fill to bottom) */}
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-75"
           style={{
@@ -123,9 +120,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="relative z-10 mx-auto max-w-5xl">
-          {/* 3 Columns Navigation matching reference perfectly centered with text-center */}
-          <div className="mx-auto w-full max-w-[780px] px-4 grid grid-cols-3 gap-6 sm:gap-10 md:gap-14 text-center">
-            {/* Column 1: Explore */}
+          <div className="mx-auto w-full max-w-195 px-4 grid grid-cols-3 gap-6 sm:gap-10 md:gap-14 text-center">
             <div className="flex flex-col items-center text-center">
               <h4 className="text-white/60 font-normal text-xs sm:text-sm mb-5 sm:mb-6">
                 Explore

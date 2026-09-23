@@ -142,7 +142,7 @@ export const FloatingStickersSection: React.FC = () => {
       <div className="mx-auto px-4 sm:px-6 lg:px-8 xl:px-16">
         <div className="relative rounded-t-[340px] sm:rounded-t-[540px] md:rounded-t-[680px] border-t border-x border-neutral-200/90 bg-[#fafafa]/70 overflow-hidden pt-20 sm:pt-28 md:pt-36 pb-16 sm:pb-24 px-4 sm:px-8">
           <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(#d1d5db_1.7px,transparent_1.7px)] [background-size:24px_24px] opacity-75"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(#d1d5db_1.7px,transparent_1.7px)] bg-size-[24px_24px] opacity-75"
             style={{
               maskImage: "linear-gradient(to top, black 35%, transparent 85%)",
               WebkitMaskImage:
@@ -151,36 +151,31 @@ export const FloatingStickersSection: React.FC = () => {
           />
 
           <div className="relative max-w-3xl mx-auto py-12 sm:py-16 text-center">
-            {/* Top Left Pill: Calm (Vivid Blue) */}
             <div className="absolute -top-3 sm:-top-5 left-2 sm:left-10 rounded-full bg-[#1d61f2] text-white px-5 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base font-bold shadow-md transform -rotate-6 select-none z-10">
               Calm
             </div>
 
-            {/* Top Center Pill: Real progress (White) */}
             <div className="absolute -top-5 sm:-top-7 left-[36%] sm:left-[39%] rounded-full bg-white border border-neutral-200/90 text-neutral-800 px-3.5 sm:px-4 py-1 text-[11px] sm:text-xs font-semibold shadow-xs select-none z-10">
               Real progress
             </div>
 
-            {/* Top Right Pill: Motivated (Bright Yellow) */}
             <div className="absolute -top-3 sm:-top-4 right-2 sm:right-10 rounded-full bg-[#f59e0b] text-white px-5 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base font-bold shadow-md transform rotate-6 select-none z-10">
               Motivated
             </div>
 
-            {/* Mid Left Sticker: Circular Checkmark Badge (Emerald Green) */}
             <div className="absolute top-[46%] left-0 sm:left-6 -translate-y-1/2 h-11 w-11 sm:h-13 sm:w-13 rounded-full bg-[#0ea569] text-white flex items-center justify-center shadow-lg transform -rotate-12 select-none z-10">
               <svg
                 viewBox="0 0 24 24"
-                className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-none stroke-current stroke-[3] stroke-linecap-round stroke-linejoin-round"
+                className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-none stroke-current stroke-3 stroke-linecap-round stroke-linejoin-round"
               >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
 
-            {/* Mid Right Sticker: Circular Lightbulb Badge (Vivid Blue) */}
             <div className="absolute top-[56%] right-0 sm:right-6 -translate-y-1/2 h-13 w-13 sm:h-16 sm:w-16 rounded-full bg-[#1d61f2] text-white flex items-center justify-center shadow-lg transform rotate-6 select-none z-10">
               <svg
                 viewBox="0 0 24 24"
-                className="w-7 h-7 sm:w-8 sm:h-8 text-white fill-none stroke-current stroke-[2] stroke-linecap-round stroke-linejoin-round"
+                className="w-7 h-7 sm:w-8 sm:h-8 text-white fill-none stroke-current stroke-2 stroke-linecap-round stroke-linejoin-round"
               >
                 <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2z" />
                 <line x1="12" y1="2" x2="12" y2="4" strokeWidth="2.5" />
@@ -218,17 +213,14 @@ export const FloatingStickersSection: React.FC = () => {
               </svg>
             </div>
 
-            {/* Bottom Left Pill: Growth oriented (White) */}
             <div className="absolute -bottom-4 sm:-bottom-6 left-4 sm:left-14 rounded-full bg-white border border-neutral-200/90 text-neutral-800 px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold shadow-sm transform -rotate-3 select-none z-10">
               Growth oriented
             </div>
 
-            {/* Bottom Right Pill: Focused sessions (Green) */}
             <div className="absolute -bottom-5 sm:-bottom-7 right-6 sm:right-20 rounded-full bg-[#0ea569] text-white px-5 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold shadow-md select-none z-10">
               Focused sessions
             </div>
 
-            {/* Headline */}
             <h2 className="text-3xl sm:text-5xl lg:text-[56px] font-black text-[#111827] tracking-tight leading-[1.08] text-center px-4">
               From focused sessions <br />
               to practical skills, we <br />
@@ -239,33 +231,27 @@ export const FloatingStickersSection: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. FEATURE CARDS: INCREASED WIDTH & CONTINUOUS HORIZONTAL MARQUEE */}
       <div className="mt-16 sm:mt-24 w-full">
-        {/* Subtitle matching reference */}
         <p className="text-sm sm:text-base font-normal text-neutral-500 mb-8 sm:mb-12 text-center max-w-xl mx-auto px-4">
           Elimi is built to support real learning with clarity and focus
         </p>
 
-        {/* Marquee Row Container */}
         <div className="relative w-full overflow-hidden py-4">
-          {/* Subtle Side Fade Overlays */}
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-linear-to-r from-white via-white/80 to-transparent z-10" />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 sm:w-28 md:w-40 bg-linear-to-l from-white via-white/80 to-transparent z-10" />
 
-          {/* Scrolling Cards Marquee */}
           <div className="flex w-max animate-marquee gap-5 sm:gap-6 hover:[animation-play-state:paused] transition-all">
             {marqueeCards.map((feat, idx) => {
               const Icon = feat.icon;
               return (
                 <div
                   key={`${feat.id}-${idx}`}
-                  className={`w-[320px] sm:w-[380px] md:w-[410px] h-[230px] sm:h-[250px] shrink-0 text-left rounded-[24px] sm:rounded-[28px] p-6 sm:p-7 border bg-white flex flex-col justify-between transition-all select-none shadow-sm hover:shadow-md ${
+                  className={`w-[320px] sm:w-95 md:w-102.5 h-57.5 sm:h-62.5 shrink-0 text-left rounded-3xl sm:rounded-[28px] p-6 sm:p-7 border bg-white flex flex-col justify-between transition-all select-none shadow-sm hover:shadow-md ${
                     feat.isHighlighted
                       ? "border-primary-solid/40 shadow-md ring-1 ring-primary-solid/20"
                       : "border-neutral-200/80 hover:border-neutral-300"
                   }`}
                 >
-                  {/* Icon */}
                   <div className="mb-4 sm:mb-5">
                     <Icon />
                   </div>
@@ -285,7 +271,6 @@ export const FloatingStickersSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Centered Learn More Action Button */}
         <div className="mt-10 sm:mt-12 flex justify-center">
           <Link
             href="/register"

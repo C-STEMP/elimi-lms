@@ -5,24 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Tooltip } from "antd";
-import { LuPanelRight, LuLogOut, LuX } from "react-icons/lu";
+import { LuPanelLeft, LuPanelRight, LuLogOut, LuX } from "react-icons/lu";
 import { useAdminSidebarContext } from "../context/admin-sidebar-context";
 import { ADMIN_NAV_ITEMS } from "../constants/nav-items";
+import { AdminLogoMark } from "./admin-logo-mark";
 import { useLogout } from "@/features/auth/hooks";
 import type { AdminSidebarProps } from "../types";
-
-const sideBarStyle: React.CSSProperties = {
-  overflowY: "auto",
-  position: "fixed",
-  height: "100vh",
-  insetInlineStart: 0,
-  top: 0,
-  bottom: 0,
-  left: 0,
-  scrollbarWidth: "thin",
-  scrollbarGutter: "stable",
-  zIndex: 40,
-};
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   collapsed: externalCollapsed,
@@ -55,61 +43,64 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <nav
-        style={sideBarStyle}
-        className={`group py-2 space-y-4 hidden md:flex flex-col justify-between bg-primary rounded-r-2xl duration-300! transition-all! divide-y! divide-white/20! select-none ${
-          isCollapsed ? "w-12" : "w-48"
+      {/* Desktop Sidebar (Floating Card) */}
+      <aside
+        className={`bg-primary text-white rounded-2xl hidden md:flex flex-col justify-between shrink-0 my-3 ml-3 shadow-md transition-all duration-300 ease-in-out h-[calc(100vh-1.5rem)] sticky top-3 select-none overflow-hidden ${
+          isCollapsed ? "w-20" : "w-60"
         } ${className}`}
       >
-        {/* Brand Header */}
-        <div className="flex items-center justify-between md:gap-4 w-full h-13 relative px-0.5">
-          <Link
-            href="/admin"
-            className={`${
-              isCollapsed ? "group-hover:hidden" : "block"
-            } h-12 relative shrink-0 flex items-center p-2`}
-          >
-            {isCollapsed ? (
-              <Image
-                src="/elimi-favicon.svg"
-                alt="Elimi"
-                className="object-contain group-hover:hidden"
-                width={20}
-                height={20}
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-            ) : (
-              <Image
-                src="/elimi-logo-white.svg"
-                alt="Elimi"
-                className="object-contain"
-                width={70}
-                height={24}
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-            )}
-          </Link>
-          <button
-            type="button"
-            onClick={toggleCollapse}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`${
-              isCollapsed ? "opacity-0 group-hover:opacity-100 pl-2" : "opacity-100 pr-2"
-            } duration-300! transition-all! h-8 w-8 text-xs text-white cursor-pointer grid place-items-center`}
-          >
-            <LuPanelRight size={18} />
-          </button>
+        {/* Top Header / Brand Logo & Toggle Button */}
+        <div className="shrink-0">
+          {!isCollapsed ? (
+            <div className="flex items-center justify-between px-4 pt-4 pb-3">
+              <Link href="/admin" className="flex items-center select-none">
+                <Image
+                  src="/elimi-logo-white.svg"
+                  alt="Elimi"
+                  className="object-contain"
+                  width={80}
+                  height={28}
+                  style={{ width: "auto", height: "28px" }}
+                  priority
+                />
+              </Link>
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <LuPanelLeft size={20} />
+              </button>
+            </div>
+          ) : (
+            <div className="pt-4 pb-3 px-2 flex items-center justify-center relative group/toggle h-14">
+              {/* Normal Logo Mark */}
+              <div className="group-hover/toggle:opacity-0 transition-opacity flex items-center justify-center">
+                <AdminLogoMark size={32} />
+              </div>
+              {/* Hover Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleCollapse}
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+                className="absolute inset-0 m-auto w-9 h-9 rounded-lg flex items-center justify-center text-white/90 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover/toggle:opacity-100 cursor-pointer"
+              >
+                <LuPanelRight size={20} />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Navigation Items and Bottom Logout */}
-        <div className="flex-1 flex flex-col justify-between">
-          <div className="flex-1 flex flex-col">
-            {ADMIN_NAV_ITEMS.map((nav) => {
-              const active = isItemActive(nav.href, nav.exact);
-              const Icon = nav.icon;
+        {/* Navigation Items */}
+        <div className="flex-1 flex flex-col gap-1.5 py-2 overflow-y-auto overflow-x-hidden">
+          {ADMIN_NAV_ITEMS.map((nav) => {
+            const active = isItemActive(nav.href, nav.exact);
+            const Icon = nav.icon;
+
+            if (isCollapsed) {
               return (
                 <Tooltip
                   key={nav.href}
@@ -119,69 +110,80 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 >
                   <Link
                     href={nav.href}
-                    className={`${
-                      isCollapsed ? "w-12" : "w-48"
-                    } overflow-x-hidden flex items-center gap-4 p-3 text-white! text-sm md:text-base border-l-4! ${
+                    className={`w-full h-11 flex items-center justify-center transition-colors relative border-l-4 ${
                       active
-                        ? "bg-white/30! border-secondary!"
-                        : "border-transparent!"
-                    } hover:bg-white/30 hover:border-secondary! transition-colors`}
+                        ? "bg-white/20 border-secondary text-white"
+                        : "border-transparent text-white/80 hover:text-white hover:bg-white/10 hover:border-secondary/60"
+                    }`}
                   >
-                    <span className="shrink-0 -translate-x-0.5">
-                      <Icon className="w-4.5 h-4.5 shrink-0" />
-                    </span>
-                    <p
-                      className={`${
-                        isCollapsed ? "hidden" : "visible"
-                      } text-sm -tracking-tight whitespace-nowrap`}
-                    >
-                      {nav.label}
-                    </p>
+                    <Icon className="w-5 h-5 shrink-0" />
                   </Link>
                 </Tooltip>
               );
-            })}
-          </div>
+            }
 
-          <div className="relative pt-4">
+            return (
+              <Link
+                key={nav.href}
+                href={nav.href}
+                className={`w-full flex items-center gap-3.5 px-4 py-3 text-sm transition-colors relative border-l-4 ${
+                  active
+                    ? "bg-white/20 border-secondary text-white font-semibold"
+                    : "border-transparent text-white/80 hover:text-white hover:bg-white/10 hover:border-secondary/60"
+                }`}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className="truncate tracking-tight">{nav.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Bottom Log Out Section */}
+        <div className="pb-3 pt-2 shrink-0">
+          {isCollapsed ? (
+            <Tooltip title="Log Out" trigger={["hover"]} placement="right">
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isPending}
+                aria-label="Log Out"
+                className="w-full h-12 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer border-l-4 border-transparent hover:border-white/60 disabled:opacity-50"
+              >
+                <LuLogOut size={20} className="shrink-0" />
+              </button>
+            </Tooltip>
+          ) : (
             <button
               type="button"
               onClick={handleLogout}
               disabled={isPending}
-              className={`${
-                isCollapsed ? "w-12" : "w-48"
-              } overflow-x-hidden flex items-center gap-4 p-3 text-white! text-sm md:text-base hover:bg-white/30 border-l-4! border-transparent! hover:border-white/60! transition-colors cursor-pointer w-full text-left disabled:opacity-50`}
+              className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer border-l-4 border-transparent hover:border-white/60 disabled:opacity-50 text-left"
             >
-              <span className="shrink-0 -translate-x-0.5">
-                <LuLogOut size={18} />
+              <LuLogOut size={20} className="shrink-0" />
+              <span className="truncate tracking-tight font-medium">
+                {isPending ? "Logging out..." : "Log Out"}
               </span>
-              <p
-                className={`${
-                  isCollapsed ? "hidden" : "visible"
-                } text-sm -tracking-tight whitespace-nowrap`}
-              >
-                {isPending ? "Logging out..." : "Logout"}
-              </p>
             </button>
-          </div>
+          )}
         </div>
-      </nav>
+      </aside>
 
-      {/* Mobile Nav */}
+      {/* Mobile Navigation Sheet */}
       <nav
         className={`${
           isMobileOpen ? "flex md:hidden" : "hidden md:hidden"
-        } flex-col bg-primary p-4 z-50 fixed top-0 left-0 right-0 bottom-0 w-screen h-screen overflow-y-auto`}
+        } flex-col bg-primary p-4 z-50 fixed inset-0 w-screen h-screen overflow-y-auto`}
       >
-        <div className="flex justify-between items-center gap-4 pb-4 mb-2 border-b! border-white/20!">
+        <div className="flex justify-between items-center gap-4 pb-4 mb-3 border-b border-white/20">
           <div className="flex md:hidden items-center gap-2">
             <Image
               src="/elimi-logo-white.svg"
               alt="Elimi"
               className="object-contain"
-              width={70}
-              height={24}
-              style={{ width: "auto", height: "auto" }}
+              width={80}
+              height={28}
+              style={{ width: "auto", height: "28px" }}
               priority
             />
           </div>
@@ -189,14 +191,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             type="button"
             onClick={closeMobile}
             aria-label="Close navigation"
-            className="grid place-items-center p-1 rounded-lg text-white text-xs h-8 w-8 sm:h-10 sm:w-10 shrink-0 cursor-pointer hover:bg-white/10 transition-colors"
+            className="grid place-items-center p-1.5 rounded-lg text-white text-xs h-9 w-9 shrink-0 cursor-pointer hover:bg-white/10 transition-colors"
           >
             <LuX size={20} />
           </button>
         </div>
 
         <div className="flex-1 flex flex-col justify-between">
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col space-y-1">
             {ADMIN_NAV_ITEMS.map((nav) => {
               const active = isItemActive(nav.href, nav.exact);
               const Icon = nav.icon;
@@ -205,36 +207,30 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   key={nav.href}
                   href={nav.href}
                   onClick={closeMobile}
-                  className={`overflow-x-hidden flex items-center gap-3 -translate-x-3 px-3 py-2.5 text-white! text-sm md:text-base ${
+                  className={`flex items-center gap-3.5 px-4 py-3 text-sm rounded-xl transition-colors ${
                     active
-                      ? "bg-white/30! border-secondary!"
-                      : "border-transparent!"
-                  } hover:bg-white/30 border-l-4! hover:border-secondary! transition-colors`}
+                      ? "bg-white/20 text-white font-semibold"
+                      : "text-white/80 hover:text-white hover:bg-white/10"
+                  }`}
                 >
-                  <span className="shrink-0 scale-75">
-                    <Icon className="w-5 h-5 shrink-0" />
-                  </span>
-                  <p className="text-white text-xs sm:text-sm -tracking-tight whitespace-nowrap">
-                    {nav.label}
-                  </p>
+                  <Icon className="w-5 h-5 shrink-0" />
+                  <span className="tracking-tight">{nav.label}</span>
                 </Link>
               );
             })}
           </div>
 
-          <div className="relative pt-4">
+          <div className="pt-4 border-t border-white/10">
             <button
               type="button"
               onClick={handleLogout}
               disabled={isPending}
-              className="overflow-x-hidden flex items-center gap-3 -translate-x-3 px-3 py-2.5 text-white! text-xs sm:text-sm hover:bg-white/30 border-l-4! border-transparent! hover:border-white/60! cursor-pointer w-full text-left transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
             >
-              <span className="shrink-0 scale-75">
-                <LuLogOut size={18} />
+              <LuLogOut size={20} className="shrink-0" />
+              <span className="tracking-tight font-medium">
+                {isPending ? "Logging out..." : "Log Out"}
               </span>
-              <p className="text-xs sm:text-sm -tracking-tight whitespace-nowrap">
-                {isPending ? "Logging out..." : "Logout"}
-              </p>
             </button>
           </div>
         </div>

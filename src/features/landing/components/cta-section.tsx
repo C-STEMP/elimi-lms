@@ -7,8 +7,7 @@ import { HiOutlineArrowNarrowRight } from "react-icons/hi";
 export const CtaSection: React.FC = () => {
   return (
     <section className="relative overflow-hidden bg-[#661126] py-16 lg:py-20 text-white">
-      {/* Decorative background glow */}
-      <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-72 w-3/4 rounded-full bg-[#aa1d3f]/40 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-72 w-3/4 rounded-full bg-primary/40 blur-3xl" />
 
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
         <span className="inline-block rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#FBCB7C] mb-4">
@@ -28,7 +27,7 @@ export const CtaSection: React.FC = () => {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#F9A825] px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-[#241014] transition-all hover:bg-[#E0931B] hover:shadow-lg active:scale-95"
+            className="inline-flex items-center gap-2 rounded-lg bg-secondary px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-neutral-primary transition-all hover:bg-secondary-hover hover:shadow-lg active:scale-95"
           >
             <span>Create Learner Account</span>
             <HiOutlineArrowNarrowRight className="h-5 w-5" />
