@@ -7,9 +7,9 @@ function isBrowser(): boolean {
 }
 
 export const roleStorage = {
-  getRole(): LmsPersonaType | null {
-    if (!isBrowser()) return null;
-    return window.localStorage.getItem(ROLE_KEY) as LmsPersonaType | null;
+  getRole(): LmsPersonaType {
+    if (!isBrowser()) return "learner";
+    return (window.localStorage.getItem(ROLE_KEY) as LmsPersonaType | null) ?? "learner";
   },
   setRole(role: LmsPersonaType): void {
     if (!isBrowser()) return;

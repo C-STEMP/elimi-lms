@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { getQueryClient } from "@/shared/api/query-client";
@@ -21,9 +20,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <GoogleOAuthProvider clientId={googleClientId}>
             <ToastProvider>
               {children}
-              {process.env.NODE_ENV === "development" && (
-                <ReactQueryDevtools initialIsOpen={false} />
-              )}
             </ToastProvider>
           </GoogleOAuthProvider>
         </QueryClientProvider>

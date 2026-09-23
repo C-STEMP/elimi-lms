@@ -1,5 +1,5 @@
-import { SelectRoleForm } from "@/features/auth";
+import { redirect } from "next/navigation";
 
 export default function SelectRolePage() {
-  return <SelectRoleForm />;
+  redirect("/register");
 }
