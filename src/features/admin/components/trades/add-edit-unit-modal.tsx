@@ -27,6 +27,7 @@ export interface AddEditUnitModalProps {
     price?: number;
     scormFile?: File | null;
     isPublished?: boolean;
+    onProgress?: (percent: number) => void;
   }) => Promise<void> | void;
 }
 
@@ -48,6 +49,7 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
   const [scormFile, setScormFile] = useState<File | null>(null);
   const [isPublished, setIsPublished] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +85,7 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
     e.preventDefault();
     if (!title.trim() || !referenceNumber.trim()) return;
     setSubmitError(null);
+    setUploadProgress(0);
 
     try {
       await onSave({
@@ -92,6 +95,7 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
         price: isFree ? 0 : Number(price) || 0,
         scormFile,
         isPublished,
+        onProgress: (pct) => setUploadProgress(pct),
       });
     } catch (err: unknown) {
       const axiosErr = err as {
@@ -291,6 +295,21 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
                 </>
               )}
             </div>
+
+            {isSubmitting && scormFile && uploadProgress > 0 && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px] text-neutral-secondary">
+                  <span>Uploading package in chunks...</span>
+                  <span className="font-semibold text-primary-solid">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary transition-all duration-300 ease-out"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Publish Immediately */}

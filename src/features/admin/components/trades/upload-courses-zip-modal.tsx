@@ -18,7 +18,10 @@ export interface UploadCoursesZipModalProps {
   levelNumber: number | null;
   isSubmitting?: boolean;
   onClose: () => void;
-  onUpload: (file: File) => Promise<void> | void;
+  onUpload: (
+    file: File,
+    onProgress?: (percent: number) => void
+  ) => Promise<void> | void;
 }
 
 export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
@@ -38,12 +41,10 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clear timers and state on modal open/close
+  // Clear state on modal open/close
   useEffect(() => {
     if (!isOpen) {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
       setSelectedFile(null);
       setUploadState("idle");
       setUploadProgress(0);
@@ -54,26 +55,16 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
   const handleStartAutoUpload = async (file: File) => {
     setSelectedFile(file);
     setUploadState("uploading");
-    setUploadProgress(12);
+    setUploadProgress(0);
     setErrorMessage(null);
 
-    // Simulate smooth real-time upload progress up to 90%
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-    progressTimerRef.current = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 85) {
-          if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-          setUploadState("processing");
-          return 92;
-        }
-        const delta = Math.max(2, Math.floor((88 - prev) / 4));
-        return Math.min(prev + delta, 88);
-      });
-    }, 280);
-
     try {
-      await onUpload(file);
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      await onUpload(file, (percent) => {
+        setUploadProgress(percent);
+        if (percent >= 100) {
+          setUploadState("processing");
+        }
+      });
       setUploadProgress(100);
       setUploadState("success");
 
@@ -82,7 +73,6 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
         onClose();
       }, 1500);
     } catch (err: unknown) {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
       setUploadState("error");
       const errObj = err as { message?: string };
       setErrorMessage(
@@ -120,7 +110,6 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
   };
 
   const handleCancelUpload = () => {
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     setSelectedFile(null);
     setUploadState("idle");
     setUploadProgress(0);

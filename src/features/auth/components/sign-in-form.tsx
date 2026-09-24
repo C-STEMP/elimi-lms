@@ -15,6 +15,8 @@ import { validateEmail } from "@/shared/lib/validation";
 import { useLogin, useLoginWithGoogle } from "@/features/auth/hooks";
 import { meKeys, getPostAuthRedirect, isUserStaffOrAdmin } from "@/features/me/hooks";
 import * as meApi from "@/features/me/api";
+import * as onboardingApi from "@/features/onboarding/api";
+import { onboardingKeys } from "@/features/onboarding/hooks";
 import type { LmsMe } from "@/features/me/types";
 
 export const SignInForm: React.FC = () => {
@@ -64,6 +66,7 @@ export const SignInForm: React.FC = () => {
 
     const redirectUrl = searchParams.get("redirect");
 
+    // Route staff and admin to admin portal
     if (isStaffOrAdmin || isUserStaffOrAdmin(me) || isEmailAdmin || isRoleAdmin) {
       if (redirectUrl && redirectUrl.startsWith("/")) {
         router.push(redirectUrl);
@@ -73,7 +76,38 @@ export const SignInForm: React.FC = () => {
       return;
     }
 
-    router.push(getPostAuthRedirect(me, redirectUrl, isStaffOrAdmin));
+    // For learners: check if they have completed onboarding
+    const learnerPersona = me?.personas?.find((p) => p.persona === "learner");
+    let isOnboarded = learnerPersona?.onboardingStatus === "completed";
+
+    if (!isOnboarded) {
+      try {
+        const onboardings = await queryClient.fetchQuery({
+          queryKey: onboardingKeys.mine(),
+          queryFn: onboardingApi.getMyOnboardings,
+        });
+        const learnerOnboarding = Array.isArray(onboardings)
+          ? onboardings.find((o) => o.persona === "learner")
+          : null;
+        if (learnerOnboarding?.status === "completed") {
+          isOnboarded = true;
+        }
+      } catch (err) {
+        console.warn("Could not verify onboarding status post-login:", err);
+      }
+    }
+
+    if (!isOnboarded) {
+      router.push("/onboarding");
+      return;
+    }
+
+    if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("/admin")) {
+      router.push(redirectUrl);
+      return;
+    }
+
+    router.push("/dashboard");
   };
 
   const handleSubmit = (e: React.FormEvent) => {

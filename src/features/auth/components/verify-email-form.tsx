@@ -128,7 +128,7 @@ export const VerifyEmailForm: React.FC = () => {
   useEffect(() => {
     if (showSuccessModal) {
       const timer = setTimeout(() => {
-        router.push(roleStorage.getRole() === "learner" ? "/dashboard" : "/onboarding");
+        router.push("/onboarding");
       }, 1500);
       return () => clearTimeout(timer);
     }
@@ -212,7 +212,7 @@ export const VerifyEmailForm: React.FC = () => {
       <StatusModal
         isOpen={showSuccessModal}
         onClose={() =>
-          router.push(roleStorage.getRole() === "learner" ? "/dashboard" : "/onboarding")
+          router.push(roleStorage.getRole() === "learner" ? "/onboarding" : "/onboarding")
         }
         type="success"
         title="Congratulations"

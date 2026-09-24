@@ -51,5 +51,11 @@ export function getPostAuthRedirect(
   ) {
     return redirectUrl;
   }
+
+  const learnerPersona = me?.personas?.find((p) => p.persona === "learner");
+  if (learnerPersona && learnerPersona.onboardingStatus !== "completed") {
+    return "/onboarding";
+  }
+
   return "/dashboard";
 }

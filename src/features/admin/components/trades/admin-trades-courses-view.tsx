@@ -130,7 +130,7 @@ export const AdminTradesCoursesView: React.FC = () => {
         isOpen={isAddUnitModalOpen}
         unit={editingUnit}
         tradeName={activeTrade?.name}
-        levelNumber={activeLevelNumber}
+        levelNumber={activeLevelNumber || editingUnit?.levelNumber || null}
         isSubmitting={isSubmitting}
         onClose={closeAddUnitModal}
         onSave={handleSaveUnit}

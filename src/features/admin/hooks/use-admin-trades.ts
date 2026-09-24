@@ -265,12 +265,20 @@ export function useAdminTrades() {
     price?: number;
     scormFile?: File | null;
     isPublished?: boolean;
+    onProgress?: (percent: number) => void;
   }) => {
-    if (!activeTrade || !activeLevel) return;
+    const targetLevel =
+      activeLevel ||
+      currentLevels.find((lvl) => lvl.level === editingUnit?.levelNumber) ||
+      currentLevels[0];
+
+    if (!activeTrade || !targetLevel) return;
     setIsSubmitting(true);
     try {
-      if (editingUnit?.courseId) {
-        await updateCourse(editingUnit.courseId, {
+      let courseId = editingUnit?.courseId;
+
+      if (courseId) {
+        await updateCourse(courseId, {
           title: payload.title,
           description: payload.description,
           price: {
@@ -279,17 +287,20 @@ export function useAdminTrades() {
           },
         });
       } else {
+        const realUnitId =
+          editingUnit?.id && !editingUnit.id.startsWith("unit-") ? editingUnit.id : null;
+
         const capLinkage = {
           sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
           tradeId: activeTrade.id || null,
-          unitIds: editingUnit?.id && !editingUnit.id.startsWith("unit-") ? [editingUnit.id] : [],
+          unitId: realUnitId,
         };
 
         const course = await createCourse({
           title: payload.title,
           description:
             payload.description ||
-            `Competency unit ${payload.referenceNumber} for ${activeTrade.name}, Level ${activeLevel.level}`,
+            `Competency unit ${payload.referenceNumber} for ${activeTrade.name}, Level ${targetLevel.level}`,
           price: {
             amountMinorUnits: String(Math.round((payload.price || 0) * 100)),
             currency: "NGN",
@@ -301,32 +312,36 @@ export function useAdminTrades() {
           },
           capLinkage,
         });
+        courseId = course.id;
+      }
 
-        if (payload.scormFile) {
-          try {
-            const packageAssetId = await uploadScormPackage(payload.scormFile);
-            const courseModule = await createModule(course.id, {
-              title: "Module 1: Course Content",
-              order: 1,
-            });
-            await createItem(course.id, courseModule.id, {
-              title: payload.title,
-              type: "scorm_package",
-              order: 1,
-              required: true,
-              packageAssetId,
-            });
-          } catch (scormErr) {
-            console.error("Failed to attach SCORM file for unit:", scormErr);
-          }
+      if (courseId && payload.scormFile) {
+        try {
+          const packageAssetId = await uploadScormPackage(
+            payload.scormFile,
+            payload.onProgress
+          );
+          const courseModule = await createModule(courseId, {
+            title: "Module 1: Course Content",
+            order: 1,
+          });
+          await createItem(courseId, courseModule.id, {
+            title: payload.title,
+            type: "scorm_package",
+            order: 1,
+            required: true,
+            packageAssetId,
+          });
+        } catch (scormErr) {
+          console.error("Failed to attach SCORM file for unit:", scormErr);
         }
+      }
 
-        if (payload.isPublished && course.id) {
-          try {
-            await publishCourse(course.id);
-          } catch (pubErr) {
-            console.warn("Could not publish course immediately:", pubErr);
-          }
+      if (courseId && payload.isPublished) {
+        try {
+          await publishCourse(courseId);
+        } catch (pubErr) {
+          console.warn("Could not publish course immediately:", pubErr);
         }
       }
       await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
@@ -372,17 +387,20 @@ export function useAdminTrades() {
     setIsUploadZipModalOpen(false);
   };
 
-  const handleUploadZip = async (file: File) => {
+  const handleUploadZip = async (
+    file: File,
+    onProgress?: (percent: number) => void
+  ) => {
     if (!activeTrade || !activeLevel) return;
     setIsSubmitting(true);
     try {
-      const packageAssetId = await uploadScormPackage(file);
+      const packageAssetId = await uploadScormPackage(file, onProgress);
       const courseTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
 
       const capLinkage = {
         sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
         tradeId: activeTrade.id || null,
-        unitIds: [],
+        unitId: null,
       };
 
       const course = await createCourse({

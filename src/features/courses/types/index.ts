@@ -29,7 +29,6 @@ export type CapLinkage = {
   tradeId?: string | null;
   qualificationLevelId?: string | null;
   unitId?: string | null;
-  unitIds?: string[];
 };
 
 export type CompletionPolicy = {
