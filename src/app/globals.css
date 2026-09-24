@@ -20,6 +20,7 @@
 
   --font-sans: var(--font-inter), sans-serif;
   --font-work: var(--font-work-sans), sans-serif;
+  --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
 
   --animate-float-slow: float-slow 12s ease-in-out infinite;
   --animate-float-slow-reverse: float-slow-reverse 15s ease-in-out infinite;

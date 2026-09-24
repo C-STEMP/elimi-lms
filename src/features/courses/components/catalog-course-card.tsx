@@ -33,6 +33,11 @@ export const CatalogCourseCard: React.FC<CatalogCourseCardProps> = ({ course, th
         >
           {free ? "Free" : "Paid"}
         </span>
+        {course.capLinkage?.unitId && (
+          <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-md bg-neutral-900/70 text-white backdrop-blur-xs font-mono uppercase">
+            {course.capLinkage.unitId.replace("unit-", "UNIT ")}
+          </span>
+        )}
       </div>
 
       <div className="p-4 flex flex-col gap-2 flex-1">

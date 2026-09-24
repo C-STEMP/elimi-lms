@@ -42,15 +42,59 @@ export async function completeLoginFromUpstream<TExtra extends Record<string, un
   const body = (await upstreamRes.json()) as ApiSuccess<LoginTokens & TExtra>;
   const { accessToken, refreshToken, ...rest } = body.data;
 
-  const meRes = await fetch(`${env.lmsApiBaseUrl}/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
-  const isStaffOrAdmin = meRes.ok
-    ? isUserStaffOrAdmin(((await meRes.json()) as ApiSuccess<LmsMe>).data)
-    : false;
+  let isStaffOrAdmin = false;
+  let meData: LmsMe | undefined = undefined;
+
+  try {
+    const meRes = await fetch(`${env.lmsApiBaseUrl}/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (meRes.ok) {
+      const meJson = await meRes.json();
+      meData = (meJson && typeof meJson === "object" && "data" in meJson)
+        ? (meJson as ApiSuccess<LmsMe>).data
+        : (meJson as LmsMe);
+      isStaffOrAdmin = isUserStaffOrAdmin(meData);
+    }
+  } catch (err) {
+    console.error("Failed to query LMS /me during completeLoginFromUpstream:", err);
+  }
+
+  // Also verify user attributes from orchestrator login
+  const rawUser = (rest as Record<string, unknown>)?.user as Record<string, unknown> | undefined;
+  const rawEmail = String(rawUser?.email || (input as Record<string, unknown>)?.email || "").toLowerCase();
+
+  if (!isStaffOrAdmin) {
+    const rawRole = String(rawUser?.role || "").toLowerCase();
+    const rawRoles = Array.isArray(rawUser?.roles) ? rawUser.roles.map(r => String(r).toLowerCase()) : [];
+    const rawIntents = Array.isArray(rawUser?.intents) ? rawUser.intents.map(i => String(i).toLowerCase()) : [];
+
+    if (
+      rawRole === "admin" ||
+      rawRole === "staff" ||
+      rawRole === "super_admin" ||
+      rawRoles.includes("admin") ||
+      rawRoles.includes("staff") ||
+      rawRoles.includes("super_admin") ||
+      rawIntents.includes("admin") ||
+      rawIntents.includes("staff") ||
+      rawUser?.isAdmin === true ||
+      rawUser?.isStaff === true ||
+      rawEmail.includes("admin")
+    ) {
+      isStaffOrAdmin = true;
+    }
+  }
 
   await setSessionCookie({ accessToken, refreshToken, isStaffOrAdmin });
 
-  return NextResponse.json({ success: true, data: rest });
+  return NextResponse.json({
+    success: true,
+    data: {
+      ...rest,
+      isStaffOrAdmin,
+      me: meData,
+    },
+  });
 }

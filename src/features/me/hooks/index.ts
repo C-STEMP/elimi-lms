@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as meApi from "@/features/me/api";
 import type { LmsMe } from "@/features/me/types";
 
+import { tokenStorage } from "@/shared/lib/token-storage";
 export { isUserStaffOrAdmin } from "@/features/me/utils/is-staff-or-admin";
 import { isUserStaffOrAdmin } from "@/features/me/utils/is-staff-or-admin";
 
@@ -23,9 +24,21 @@ export function useMe() {
 /** Where a user should land post-auth: admin portal, or learner dashboard. */
 export function getPostAuthRedirect(
   me: LmsMe | undefined,
-  redirectUrl?: string | null
+  redirectUrl?: string | null,
+  isStaffOrAdminOverride?: boolean
 ): string {
-  if (isUserStaffOrAdmin(me)) {
+  const user = tokenStorage.getUser();
+  const isAdminUser = Boolean(
+    isStaffOrAdminOverride ??
+      (isUserStaffOrAdmin(me) ||
+        user?.isStaffOrAdmin ||
+        user?.role === "admin" ||
+        user?.role === "staff" ||
+        user?.roles?.includes("admin") ||
+        user?.email?.toLowerCase().includes("admin"))
+  );
+
+  if (isAdminUser) {
     if (redirectUrl && redirectUrl.startsWith("/")) {
       return redirectUrl;
     }

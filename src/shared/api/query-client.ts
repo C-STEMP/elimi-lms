@@ -13,7 +13,9 @@ function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchOnWindowFocus: false, // Prevent continuous reload when switching windows/tabs
+        refetchOnReconnect: false,
         retry: 1,
       },
     },

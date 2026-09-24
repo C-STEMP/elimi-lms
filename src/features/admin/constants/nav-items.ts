@@ -17,7 +17,7 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     exact: true,
   },
   {
-    label: "Courses",
+    label: "Trades & Courses",
     href: "/admin/courses",
     icon: LuBookOpen,
   },

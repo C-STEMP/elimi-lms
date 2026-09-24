@@ -13,6 +13,10 @@ function isBrowser(): boolean {
 export type StoredUser = {
   id: string;
   email: string;
+  role?: string;
+  roles?: string[];
+  intents?: string[];
+  isStaffOrAdmin?: boolean;
 };
 
 const USER_KEY = "elimi_user";

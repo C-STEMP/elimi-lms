@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { HiStar } from "react-icons/hi";
+import { useCourses } from "@/features/courses/hooks";
 
 type CourseItem = {
   id: string;
@@ -101,8 +102,52 @@ const CATEGORIES = [
 ];
 
 export const CoursesSection: React.FC = () => {
+  const { data: publishedCoursesData } = useCourses({ limit: 12 });
+
+  const activeCourses: CourseItem[] = useMemo(() => {
+    if (publishedCoursesData?.data && publishedCoursesData.data.length > 0) {
+      const patterns: CourseItem["pattern"][] = [
+        "solar",
+        "clover",
+        "tessellation",
+        "arcs",
+        "lenses",
+        "concentric",
+      ];
+      return publishedCoursesData.data.map((c, idx) => ({
+        id: c.id,
+        title: c.title,
+        badge: c.capLinkage?.tradeId ? "Accredited Trade Unit" : "Accredited Track",
+        rating: "4.9 ( 450+ Reviews )",
+        description:
+          c.description ||
+          "Master essential technical competencies and hands-on vocational skills.",
+        instructor: "Lead Technical Evaluator",
+        instructorRole: "Accredited Vocational Inspector",
+        category: c.title.toLowerCase().includes("electric")
+          ? "Electrical"
+          : c.title.toLowerCase().includes("plumb")
+          ? "Plumbing"
+          : c.title.toLowerCase().includes("paint")
+          ? "Painting"
+          : c.title.toLowerCase().includes("solar")
+          ? "Solar PV"
+          : c.title.toLowerCase().includes("carpent")
+          ? "Carpentry"
+          : "Trending",
+        pattern: patterns[idx % patterns.length],
+      }));
+    }
+    return COURSES;
+  }, [publishedCoursesData]);
+
   const [selectedCourse, setSelectedCourse] = useState<CourseItem>(COURSES[0]);
   const [activeCategory, setActiveCategory] = useState<string>("Trending");
+
+  const displayCourse =
+    activeCourses.find((c) => c.id === selectedCourse.id) ||
+    activeCourses[0] ||
+    COURSES[0];
 
   const handleCardClick = (course: CourseItem) => {
     setSelectedCourse(course);
@@ -111,7 +156,9 @@ export const CoursesSection: React.FC = () => {
 
   const handleCategoryClick = (cat: string) => {
     setActiveCategory(cat);
-    const matched = COURSES.find((c) => c.category === cat);
+    const matched =
+      activeCourses.find((c) => c.category === cat) ||
+      COURSES.find((c) => c.category === cat);
     if (matched) {
       setSelectedCourse(matched);
     }
@@ -184,8 +231,8 @@ export const CoursesSection: React.FC = () => {
   };
 
   // Two identical copies for seamless looping translateX(-50%)
-  const row1Items = [...COURSES, ...COURSES];
-  const row2Items = [...COURSES, ...COURSES].reverse();
+  const row1Items = [...activeCourses, ...activeCourses];
+  const row2Items = [...activeCourses, ...activeCourses].reverse();
 
   return (
     <section id="courses" className="w-full pt-16 pb-12 sm:pt-20 sm:pb-16 bg-white relative overflow-hidden select-none">
@@ -366,33 +413,37 @@ export const CoursesSection: React.FC = () => {
               <div className="mt-3 text-left">
                 {/* Badge Pill */}
                 <span className="inline-block rounded-full bg-primary-solid/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary-solid mb-1">
-                  {selectedCourse.badge}
+                  {displayCourse.badge}
                 </span>
 
                 <h3 className="text-lg sm:text-[19px] font-extrabold text-[#111827] leading-snug line-clamp-1">
-                  {selectedCourse.title}
+                  {displayCourse.title}
                 </h3>
 
                 <div className="flex items-center gap-1 text-amber-400 text-xs mt-1.5 mb-1.5">
                   {[...Array(5)].map((_, i) => (
                     <HiStar key={i} className="h-3.5 w-3.5" />
                   ))}
-                  <span className="ml-1 text-neutral-500 font-medium">{selectedCourse.rating}</span>
+                  <span className="ml-1 text-neutral-500 font-medium">{displayCourse.rating}</span>
                 </div>
 
                 <p className="text-xs text-neutral-600 leading-relaxed line-clamp-2">
-                  {selectedCourse.description}
+                  {displayCourse.description}
                 </p>
 
                 <div className="mt-2.5">
-                  <p className="text-xs font-bold text-neutral-900">{selectedCourse.instructor}</p>
-                  <p className="text-[11px] text-neutral-400 mt-0.5">{selectedCourse.instructorRole}</p>
+                  <p className="text-xs font-bold text-neutral-900">{displayCourse.instructor}</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">{displayCourse.instructorRole}</p>
                 </div>
 
                 {/* Join Class Now Pill Button */}
                 <div className="mt-3.5 sm:mt-4">
                   <Link
-                    href="/register"
+                    href={
+                      displayCourse.id && (displayCourse.id.startsWith("course-") || displayCourse.id.length > 8)
+                        ? `/courses/${displayCourse.id}`
+                        : "/courses"
+                    }
                     className="block w-full text-center rounded-full bg-primary-solid hover:bg-primary-hover text-white py-2.5 sm:py-3 text-xs sm:text-sm font-bold shadow-md transition-all active:scale-[0.98]"
                   >
                     Join Class Now

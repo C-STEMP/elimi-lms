@@ -13,6 +13,9 @@ import { isFree } from "@/shared/lib/money";
 import { CatalogCourseCard } from "@/features/courses/components/catalog-course-card";
 import type { CourseSummary } from "@/features/courses/types";
 
+import { useQuery } from "@tanstack/react-query";
+import { getCapTrades } from "@/features/cap";
+
 type PriceFilter = "all" | "free" | "paid";
 
 const PRICE_FILTERS: { id: PriceFilter; label: string }[] = [
@@ -23,23 +26,44 @@ const PRICE_FILTERS: { id: PriceFilter; label: string }[] = [
 
 export const CourseCatalog: React.FC = () => {
   const [q, setQ] = useState("");
+  const [selectedTrade, setSelectedTrade] = useState("all");
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<CourseSummary[]>([]);
 
-  const { data, isLoading, isFetching } = useCourses({ q: q || undefined, limit: 12, cursor });
+  const { data: capTrades = [] } = useQuery({
+    queryKey: ["cap", "trades"],
+    queryFn: getCapTrades,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const tradeTabs = useMemo(() => {
+    return [
+      { id: "all", label: "All Trades" },
+      ...capTrades.map((t) => ({ id: t.id, label: t.name })),
+    ];
+  }, [capTrades]);
+
+  const { data, isLoading, isFetching } = useCourses({
+    q: q || undefined,
+    tradeId: selectedTrade !== "all" ? selectedTrade : undefined,
+    limit: 12,
+    cursor,
+  });
 
   useEffect(() => {
     if (!data) return;
-    // Syncing accumulated pages from the query result, not re-derivable during render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccumulated((prev) => (cursor ? [...prev, ...data.data] : data.data));
-    // Only re-run when a new page of data arrives for the current cursor.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [data, cursor]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQ(e.target.value);
+    setCursor(undefined);
+    setAccumulated([]);
+  };
+
+  const handleTradeChange = (tradeId: string) => {
+    setSelectedTrade(tradeId);
     setCursor(undefined);
     setAccumulated([]);
   };
@@ -101,6 +125,24 @@ export const CourseCatalog: React.FC = () => {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Trade Category Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+          {tradeTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleTradeChange(tab.id)}
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                selectedTrade === tab.id
+                  ? "bg-primary-solid text-white shadow-2xs"
+                  : "bg-white border border-border-gray/60 text-neutral-secondary hover:text-neutral-primary hover:border-gray-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {isLoading ? (

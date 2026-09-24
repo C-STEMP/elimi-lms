@@ -41,12 +41,13 @@ async function performRefresh(refreshToken: string): Promise<SessionPayload | nu
     });
     if (!meRes.ok) return null;
 
-    const meBody = (await meRes.json()) as ApiSuccess<LmsMe>;
+    const meBody = (await meRes.json()) as Record<string, unknown>;
+    const meData = (meBody && "data" in meBody ? meBody.data : meBody) as LmsMe;
 
     return {
       accessToken,
       refreshToken: newRefreshToken,
-      isStaffOrAdmin: isUserStaffOrAdmin(meBody.data),
+      isStaffOrAdmin: isUserStaffOrAdmin(meData),
     };
   } catch {
     return null;

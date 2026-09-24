@@ -33,7 +33,13 @@ export function useLogin() {
   return useMutation({
     mutationFn: (input: LoginInput) => authApi.login(input),
     onSuccess: (result) => {
-      tokenStorage.setUser(result.user);
+      tokenStorage.setUser({
+        ...result.user,
+        isStaffOrAdmin: result.isStaffOrAdmin,
+      });
+      if (result.me) {
+        queryClient.setQueryData(meKeys.me(), result.me);
+      }
       queryClient.invalidateQueries({ queryKey: meKeys.me() });
     },
   });
@@ -44,7 +50,13 @@ export function useLoginWithGoogle() {
   return useMutation({
     mutationFn: (input: GoogleLoginInput) => authApi.loginWithGoogle(input),
     onSuccess: (result) => {
-      tokenStorage.setUser(result.user);
+      tokenStorage.setUser({
+        ...result.user,
+        isStaffOrAdmin: result.isStaffOrAdmin,
+      });
+      if (result.me) {
+        queryClient.setQueryData(meKeys.me(), result.me);
+      }
       queryClient.invalidateQueries({ queryKey: meKeys.me() });
     },
   });
@@ -55,7 +67,13 @@ export function useVerifyAccount() {
   return useMutation({
     mutationFn: (input: VerifyAccountInput) => authApi.verifyAccount(input),
     onSuccess: (result) => {
-      tokenStorage.setUser(result.user);
+      tokenStorage.setUser({
+        ...result.user,
+        isStaffOrAdmin: result.isStaffOrAdmin,
+      });
+      if (result.me) {
+        queryClient.setQueryData(meKeys.me(), result.me);
+      }
       queryClient.invalidateQueries({ queryKey: meKeys.me() });
     },
   });

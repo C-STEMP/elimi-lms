@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const SERVICE_BASE_URLS: Record<string, string> = {
   lms: env.lmsApiBaseUrl,
   orchestrator: env.orchestratorApiBaseUrl,
+  cap: env.capApiBaseUrl,
 };
 
 const REQUEST_HEADERS_TO_DROP = new Set(["host", "cookie", "content-length"]);

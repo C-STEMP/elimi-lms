@@ -14,4 +14,8 @@ export const env = {
     "NEXT_PUBLIC_ORCHESTRATOR_API_BASE_URL",
     process.env.NEXT_PUBLIC_ORCHESTRATOR_API_BASE_URL
   ),
+  capApiBaseUrl:
+    process.env.NEXT_PUBLIC_CAP_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_CAP_URL ||
+    "https://www.staging-api.elimi-ecosystem.e-limi.africa/v1/cap",
 };

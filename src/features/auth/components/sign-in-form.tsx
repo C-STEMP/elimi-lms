@@ -13,8 +13,9 @@ import { useToast } from "@/shared/components/ui/toast";
 import { ASSETS_URL } from "@/assets";
 import { validateEmail } from "@/shared/lib/validation";
 import { useLogin, useLoginWithGoogle } from "@/features/auth/hooks";
-import { meKeys, getPostAuthRedirect } from "@/features/me/hooks";
+import { meKeys, getPostAuthRedirect, isUserStaffOrAdmin } from "@/features/me/hooks";
 import * as meApi from "@/features/me/api";
+import type { LmsMe } from "@/features/me/types";
 
 export const SignInForm: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -28,10 +29,51 @@ export const SignInForm: React.FC = () => {
   const { mutate: login, isPending: isLoggingIn } = useLogin();
   const { mutate: loginWithGoogle, isPending: isGooglePending } = useLoginWithGoogle();
 
-  const redirectPostAuth = async () => {
-    const me = await queryClient.fetchQuery({ queryKey: meKeys.me(), queryFn: meApi.getMe });
+  const redirectPostAuth = async (loginResult?: {
+    user?: { email?: string; role?: string; roles?: string[]; intents?: string[] };
+    isStaffOrAdmin?: boolean;
+    me?: LmsMe;
+  }) => {
+    let me = loginResult?.me;
+    let isStaffOrAdmin = loginResult?.isStaffOrAdmin;
+
+    const emailToCheck = (email || loginResult?.user?.email || "").toLowerCase();
+    const isEmailAdmin = emailToCheck.includes("admin");
+    const rawRole = String(loginResult?.user?.role || "").toLowerCase();
+    const rawRoles = Array.isArray(loginResult?.user?.roles)
+      ? loginResult.user.roles.map((r) => String(r).toLowerCase())
+      : [];
+    const isRoleAdmin =
+      rawRole === "admin" ||
+      rawRole === "staff" ||
+      rawRole === "super_admin" ||
+      rawRoles.includes("admin") ||
+      rawRoles.includes("staff");
+
+    if (!me) {
+      try {
+        me = await queryClient.fetchQuery({ queryKey: meKeys.me(), queryFn: meApi.getMe });
+      } catch (err) {
+        console.warn("Could not fetch me post-auth:", err);
+      }
+    }
+
+    if (isStaffOrAdmin === undefined) {
+      isStaffOrAdmin = isUserStaffOrAdmin(me);
+    }
+
     const redirectUrl = searchParams.get("redirect");
-    router.push(getPostAuthRedirect(me, redirectUrl));
+
+    if (isStaffOrAdmin || isUserStaffOrAdmin(me) || isEmailAdmin || isRoleAdmin) {
+      if (redirectUrl && redirectUrl.startsWith("/")) {
+        router.push(redirectUrl);
+        return;
+      }
+      router.push("/admin");
+      return;
+    }
+
+    router.push(getPostAuthRedirect(me, redirectUrl, isStaffOrAdmin));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,13 +95,13 @@ export const SignInForm: React.FC = () => {
     login(
       { email, password },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           toast({
             type: "success",
             title: "Welcome Back!",
             description: `Signed in as ${email}`,
           });
-          redirectPostAuth();
+          redirectPostAuth(data);
         },
         onError: (error) => {
           if (error.code === "auth.account_not_verified" || error.status === 403) {
@@ -102,7 +144,7 @@ export const SignInForm: React.FC = () => {
             title: data.isNewUser ? "Welcome!" : "Welcome Back!",
             description: `Signed in as ${data.user.email}`,
           });
-          redirectPostAuth();
+          redirectPostAuth(data);
         },
         onError: (error) => {
           toast({

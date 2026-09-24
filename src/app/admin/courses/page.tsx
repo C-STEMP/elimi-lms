@@ -1,11 +1,21 @@
-import React from "react";
-import { AdminCoursesView } from "@/features/admin";
+import React, { Suspense } from "react";
+import { AdminTradesCoursesView } from "@/features/admin";
 
 export const metadata = {
-  title: "Courses Management | Elimi LMS Admin",
-  description: "Manage courses, pricing, SCORM packages and publishing",
+  title: "Trades & Courses Management | Elimi LMS Admin",
+  description: "Configure catalogue trade slots, qualification levels and course units",
 };
 
 export default function AdminCoursesPage() {
-  return <AdminCoursesView />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      }
+    >
+      <AdminTradesCoursesView />
+    </Suspense>
+  );
 }

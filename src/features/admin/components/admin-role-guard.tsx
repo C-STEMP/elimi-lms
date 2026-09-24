@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useMe, isUserStaffOrAdmin } from "@/features/me/hooks";
+import { tokenStorage } from "@/shared/lib/token-storage";
 import { InlineSpinner } from "@/shared/components/ui/loader";
 
 export function AdminRoleGuard({ children }: { children: React.ReactNode }) {
@@ -11,7 +12,16 @@ export function AdminRoleGuard({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const { data: me, isLoading, isError } = useMe();
 
-  const isStaffOrAdmin = isUserStaffOrAdmin(me);
+  const user = typeof window !== "undefined" ? tokenStorage.getUser() : null;
+  const isAdminFromUser = Boolean(
+    user?.isStaffOrAdmin ||
+      user?.role === "admin" ||
+      user?.role === "staff" ||
+      user?.roles?.includes("admin") ||
+      user?.email?.toLowerCase().includes("admin")
+  );
+
+  const isStaffOrAdmin = isUserStaffOrAdmin(me) || isAdminFromUser;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

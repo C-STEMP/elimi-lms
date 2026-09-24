@@ -1,3 +1,5 @@
+import type { LmsMe } from "@/features/me/types";
+
 export type OtpPurpose = "account_verify" | "password_reset";
 
 export type UserStatus = "pending_verification" | "active" | "suspended" | "deactivated";
@@ -47,6 +49,8 @@ export type GoogleLoginInput = {
 export type GoogleLoginResult = {
   user: User;
   isNewUser: boolean;
+  isStaffOrAdmin?: boolean;
+  me?: LmsMe;
 };
 
 export type LoginInput = {
@@ -56,6 +60,8 @@ export type LoginInput = {
 
 export type LoginResult = {
   user: User;
+  isStaffOrAdmin?: boolean;
+  me?: LmsMe;
 };
 
 export type VerifyAccountInput = {

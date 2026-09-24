@@ -18,7 +18,8 @@ export { TopPerformingCourses } from "./components/overview/top-performing-cours
 export { RecentEnrollmentsTable } from "./components/overview/recent-enrollments-table";
 export { AgeDistributionChart } from "./components/overview/age-distribution-chart";
 
-// Courses module exports
+// Trades & Courses module exports
+export * from "./components/trades";
 export { AdminCoursesView } from "./components/courses/admin-courses-view";
 export { CoursesFilterBar } from "./components/courses/courses-filter-bar";
 export { CoursesGrid } from "./components/courses/courses-grid";
@@ -95,6 +96,7 @@ export {
 export { useAdminSidebar } from "./hooks/use-admin-sidebar";
 export { useAdminOverview } from "./hooks/use-admin-overview";
 export { useAdminCourses } from "./hooks/use-admin-courses";
+export { useAdminTrades } from "./hooks/use-admin-trades";
 export { useAdminLearners } from "./hooks/use-admin-learners";
 export { useAdminEnrollment } from "./hooks/use-admin-enrollment";
 export { useAdminStaff } from "./hooks/use-admin-staff";

@@ -23,10 +23,12 @@ export type GenericMessage = {
   message?: string;
 };
 
-/** Optional catalogue link for CAP gap-training recommendations. */
+/** Optional catalogue link for CAP gap-training recommendations. One LMS course maps to at most one CAP unit. */
 export type CapLinkage = {
   sectorId?: string | null;
   tradeId?: string | null;
+  qualificationLevelId?: string | null;
+  unitId?: string | null;
   unitIds?: string[];
 };
 
