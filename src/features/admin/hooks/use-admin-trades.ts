@@ -273,9 +273,8 @@ export function useAdminTrades() {
     title: string;
     description?: string;
     price?: number;
-    scormFile?: File | null;
+    packageAssetId?: string | null;
     isPublished?: boolean;
-    onProgress?: (percent: number) => void;
   }) => {
     const targetLevel =
       activeLevel ||
@@ -288,16 +287,14 @@ export function useAdminTrades() {
       let courseId = editingUnit?.courseId || draftUnitCourseIdRef.current || undefined;
 
       // Refuse to publish an empty unit up front, before anything is written.
-      if (payload.isPublished && !payload.scormFile && !(courseId && (await courseHasContent(courseId)))) {
+      if (payload.isPublished && !payload.packageAssetId && !(courseId && (await courseHasContent(courseId)))) {
         throw new Error(
           "Upload a SCORM package to publish this unit, or untick \"Publish immediately\" to save it as a draft."
         );
       }
 
-      // Upload first so a failed upload never leaves an empty course behind.
-      const packageAssetId = payload.scormFile
-        ? await uploadScormPackage(payload.scormFile, payload.onProgress)
-        : null;
+      // The modal uploads the package before Save is enabled, so we only get a finished assetId.
+      const { packageAssetId } = payload;
 
       const price = {
         amountMinorUnits: String(Math.round((payload.price || 0) * 100)),

@@ -30,6 +30,10 @@ export const INITIAL_STEP_ONE: CreateCourseStepOneData = {
 export const INITIAL_STEP_TWO: CreateCourseStepTwoData = {
   scormFile: null,
   scormFileName: "",
+  uploadStatus: "idle",
+  uploadProgress: 0,
+  uploadError: null,
+  packageAssetId: null,
   displayPackage: "",
   activityAttempts: "unlimited",
   minPercentage: "80%",

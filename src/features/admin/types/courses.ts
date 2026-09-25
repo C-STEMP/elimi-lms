@@ -25,6 +25,12 @@ export interface CreateCourseStepOneData {
 export interface CreateCourseStepTwoData {
   scormFile: File | null;
   scormFileName: string;
+  /** Upload starts as soon as a file is picked; Add Course waits for "done". */
+  uploadStatus: "idle" | "uploading" | "done" | "error";
+  uploadProgress: number;
+  uploadError: string | null;
+  /** Orchestrator assetId, set once the SCORM upload has finished. */
+  packageAssetId: string | null;
   displayPackage: string;
   activityAttempts: string;
   minPercentage: string;

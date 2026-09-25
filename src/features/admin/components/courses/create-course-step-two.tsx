@@ -4,6 +4,7 @@ import React from "react";
 import { Select } from "@/shared/components/ui/select";
 import { Button } from "@/shared/components/ui/button";
 import { FileUpload } from "@/shared/components/ui/file-upload";
+import { uploadScormPackage, MAX_SCORM_PACKAGE_MB } from "@/features/storage";
 import {
   ATTEMPT_OPTIONS,
   DISPLAY_PACKAGE_OPTIONS,
@@ -25,24 +26,78 @@ export const CreateCourseStepTwo: React.FC<CreateCourseStepTwoProps> = ({
   onChange,
   onSubmit,
 }) => {
+  const isUploading = data.uploadStatus === "uploading";
+  const isUploadPending = Boolean(data.scormFile) && !data.packageAssetId;
+
+  // Updates only apply while `file` is still the selected one, so a replaced/removed file's
+  // late progress or result can't overwrite the current selection.
+  const updateUpload = (file: File, patch: Partial<CreateCourseStepTwoData>) =>
+    onChange((prev) => (prev.scormFile === file ? { ...prev, ...patch } : prev));
+
+  const startUpload = async (file: File) => {
+    try {
+      const assetId = await uploadScormPackage(file, (pct) =>
+        updateUpload(file, { uploadProgress: pct })
+      );
+      updateUpload(file, { uploadStatus: "done", uploadProgress: 100, packageAssetId: assetId });
+    } catch (err) {
+      updateUpload(file, {
+        uploadStatus: "error",
+        uploadError: (err as { message?: string })?.message || "Upload failed. Select the file again to retry.",
+      });
+    }
+  };
+
   return (
     <div className="space-y-4 pt-1">
       <FileUpload
         label="Upload SCORM Package"
         accept=".zip"
-        maxSizeMB={50}
+        maxSizeMB={MAX_SCORM_PACKAGE_MB}
         value={data.scormFile}
         fileName={data.scormFileName}
         placeholderTitle="Upload SCORM File"
         placeholderSubtitle="Supported format: .zip archive"
+        simulateProgress={false}
+        disabled={isUploading || isSubmitting}
         onChange={(file) => {
           onChange((prev) => ({
             ...prev,
             scormFile: file,
             scormFileName: file?.name || "",
+            uploadStatus: file ? "uploading" : "idle",
+            uploadProgress: 0,
+            uploadError: null,
+            packageAssetId: null,
           }));
+          if (file) void startUpload(file);
         }}
       />
+
+      {data.scormFile && data.uploadStatus !== "idle" && (
+        <div className="-mt-2 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-[11px] text-neutral-secondary">
+            <span>
+              {data.uploadStatus === "uploading" && "Uploading package..."}
+              {data.uploadStatus === "done" && "✓ Package uploaded"}
+              {data.uploadStatus === "error" && (
+                <span className="text-red-600">{data.uploadError}</span>
+              )}
+            </span>
+            {data.uploadStatus !== "error" && (
+              <span className="font-semibold text-primary-solid">{data.uploadProgress}%</span>
+            )}
+          </div>
+          {data.uploadStatus !== "error" && (
+            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary transition-all duration-300 ease-out"
+                style={{ width: `${data.uploadProgress}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="pt-1">
         <h4 className="text-xs font-bold text-neutral-primary mb-2.5">
@@ -105,9 +160,10 @@ export const CreateCourseStepTwo: React.FC<CreateCourseStepTwoProps> = ({
           size="lg"
           fullWidth
           loading={isSubmitting}
+          disabled={isUploadPending}
           onClick={onSubmit}
         >
-          {isSubmitting ? "Processing Course & SCORM..." : "Add Course"}
+          {isSubmitting ? "Creating Course..." : "Add Course"}
         </Button>
       </div>
     </div>

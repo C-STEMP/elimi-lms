@@ -11,6 +11,7 @@ import {
   FiAlertCircle,
 } from "react-icons/fi";
 import type { UnitCourseItem } from "@/features/cap/types";
+import { uploadScormPackage } from "@/features/storage";
 
 export interface AddEditUnitModalProps {
   isOpen: boolean;
@@ -25,9 +26,9 @@ export interface AddEditUnitModalProps {
     title: string;
     description?: string;
     price?: number;
-    scormFile?: File | null;
+    /** Orchestrator assetId of a SCORM zip that has already finished uploading. */
+    packageAssetId?: string | null;
     isPublished?: boolean;
-    onProgress?: (percent: number) => void;
   }) => Promise<void> | void;
 }
 
@@ -50,11 +51,26 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
   const [isPublished, setIsPublished] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [packageAssetId, setPackageAssetId] = useState<string | null>(null);
+  // Bumped on every new upload / reset so a stale upload can't overwrite newer state.
+  const uploadTokenRef = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const resetUpload = () => {
+    uploadTokenRef.current += 1;
+    setScormFile(null);
+    setUploadProgress(0);
+    setUploadStatus("idle");
+    setUploadError(null);
+    setPackageAssetId(null);
+  };
+
   useEffect(() => {
     setSubmitError(null);
+    resetUpload();
     if (unit) {
       setReferenceNumber(unit.referenceNumber || "001");
       setTitle(unit.title || "");
@@ -74,18 +90,47 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
     }
   }, [unit, isOpen]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setScormFile(file);
+  const startUpload = async (file: File) => {
+    const token = ++uploadTokenRef.current;
+    setScormFile(file);
+    setPackageAssetId(null);
+    setUploadError(null);
+    setUploadProgress(0);
+    setUploadStatus("uploading");
+    try {
+      const assetId = await uploadScormPackage(file, (pct) => {
+        if (uploadTokenRef.current === token) setUploadProgress(pct);
+      });
+      if (uploadTokenRef.current !== token) return;
+      setPackageAssetId(assetId);
+      setUploadProgress(100);
+      setUploadStatus("done");
+    } catch (err) {
+      if (uploadTokenRef.current !== token) return;
+      setUploadStatus("error");
+      setUploadError(
+        (err as { message?: string })?.message || "Upload failed. Click above to try again."
+      );
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Clear the input so re-selecting the same file (e.g. after a failure) fires onChange again.
+    e.target.value = "";
+    if (file) void startUpload(file);
+  };
+
+  const isUploading = uploadStatus === "uploading";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !referenceNumber.trim()) return;
+    if (!title.trim() || !referenceNumber.trim() || isUploading) return;
+    if (scormFile && !packageAssetId) {
+      setSubmitError("The SCORM package didn't upload. Select the file again to retry.");
+      return;
+    }
     setSubmitError(null);
-    setUploadProgress(0);
 
     try {
       await onSave({
@@ -93,9 +138,8 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
         title: title.trim(),
         description: description.trim(),
         price: isFree ? 0 : Number(price) || 0,
-        scormFile,
+        packageAssetId,
         isPublished,
-        onProgress: (pct) => setUploadProgress(pct),
       });
     } catch (err: unknown) {
       const axiosErr = err as {
@@ -276,7 +320,9 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             />
 
             <div
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (!isUploading && !isSubmitting) fileInputRef.current?.click();
+              }}
               className="border-2 border-dashed border-gray-200 hover:border-primary-solid/40 bg-white hover:bg-input-bg rounded-xl p-3.5 text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
             >
               {scormFile ? (
@@ -296,18 +342,33 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
               )}
             </div>
 
-            {isSubmitting && scormFile && uploadProgress > 0 && (
+            {scormFile && uploadStatus !== "idle" && (
               <div className="mt-2 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-[11px] text-neutral-secondary">
-                  <span>Uploading package in chunks...</span>
-                  <span className="font-semibold text-primary-solid">{uploadProgress}%</span>
+                  <span className="flex items-center gap-1">
+                    {uploadStatus === "uploading" && "Uploading package..."}
+                    {uploadStatus === "done" && (
+                      <>
+                        <FiCheck className="w-3 h-3 text-green-600" />
+                        Package uploaded
+                      </>
+                    )}
+                    {uploadStatus === "error" && (
+                      <span className="text-red-600">{uploadError}</span>
+                    )}
+                  </span>
+                  {uploadStatus !== "error" && (
+                    <span className="font-semibold text-primary-solid">{uploadProgress}%</span>
+                  )}
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary transition-all duration-300 ease-out"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
+                {uploadStatus !== "error" && (
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -341,7 +402,7 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploading}
               className="py-2.5 px-5 rounded-xl bg-primary-solid hover:bg-primary-hover active:scale-[0.98] text-white text-xs font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
             >
               {isSubmitting ? (

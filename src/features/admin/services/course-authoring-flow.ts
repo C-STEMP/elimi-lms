@@ -6,7 +6,6 @@ import {
   createItem,
   updateItem,
 } from "@/features/courses/api";
-import { uploadScormPackage } from "@/features/storage";
 import type { ApiError } from "@/shared/types";
 import type {
   CreateCourseStepOneData,
@@ -94,10 +93,11 @@ export async function createCourseWithScorm({
     },
   };
 
-  // 1. Upload first so a failed upload never leaves an empty course behind
-  const packageAssetId = stepTwo.scormFile
-    ? await uploadScormPackage(stepTwo.scormFile)
-    : null;
+  // 1. The step-two form uploads the package on select; only a finished upload is attached.
+  if (stepTwo.scormFile && !stepTwo.packageAssetId) {
+    throw new Error("The SCORM package hasn't finished uploading. Wait for it or select the file again.");
+  }
+  const { packageAssetId } = stepTwo;
 
   // 2. Create (or update the leftover draft of) the course shell
   const course = existingCourseId
