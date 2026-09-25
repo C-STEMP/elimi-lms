@@ -8,12 +8,7 @@ import {
   getCapTradeDetail,
   getCapTradeUnits,
 } from "@/features/cap";
-import type {
-  LevelItem,
-  UnitCourseItem,
-  Trade,
-  Unit,
-} from "@/features/cap/types";
+import type { LevelItem, UnitCourseItem } from "@/features/cap/types";
 import {
   useAuthoringCourses,
   courseKeys,
@@ -36,13 +31,11 @@ export function useAdminTrades() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  // Navigation from search params
   const tradeIdParam = searchParams.get("tradeId") || searchParams.get("trade") || searchParams.get("slot");
   const levelParam = searchParams.get("level");
 
   const activeLevelNumber = levelParam ? parseInt(levelParam, 10) : null;
 
-  // Real backend queries
   const authoringQuery = useAuthoringCourses();
 
   const {
@@ -57,10 +50,8 @@ export function useAdminTrades() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Resolve active trade from list or query parameter
   const activeTrade = useMemo(() => {
     if (!tradeIdParam) return null;
-    // Check if tradeId matches by id, slug, or 1-based index
     const foundById = capTrades.find((t) => t.id === tradeIdParam || t.slug === tradeIdParam);
     if (foundById) return foundById;
 
@@ -73,30 +64,20 @@ export function useAdminTrades() {
 
   const activeTradeId = activeTrade?.id || tradeIdParam || null;
 
-  // Real backend query for active trade detail (NOS) from CAP
-  const {
-    data: activeTradeDetail = null,
-    isLoading: isLoadingTradeDetail,
-  } = useQuery({
+  const { data: activeTradeDetail = null } = useQuery({
     queryKey: ["cap", "trade-detail", activeTradeId],
     queryFn: () => (activeTradeId ? getCapTradeDetail(activeTradeId) : Promise.resolve(null)),
     enabled: Boolean(activeTradeId),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Real backend query for active trade units from CAP
-  const {
-    data: activeTradeUnits = [],
-    isLoading: isLoadingUnits,
-    refetch: refetchTradeUnits,
-  } = useQuery({
+  const { data: activeTradeUnits = [], isLoading: isLoadingUnits } = useQuery({
     queryKey: ["cap", "trade-units", activeTradeId],
     queryFn: () => (activeTradeId ? getCapTradeUnits(activeTradeId) : Promise.resolve([])),
     enabled: Boolean(activeTradeId),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Compute levels for active trade from levelCount and real units
   const currentLevels: LevelItem[] = useMemo(() => {
     if (!activeTrade) return [];
 
@@ -121,30 +102,25 @@ export function useAdminTrades() {
     });
   }, [activeTrade, activeTradeUnits]);
 
-  // Active level object
   const activeLevel = useMemo(() => {
     if (!activeTrade || activeLevelNumber === null) return null;
     return currentLevels.find((lvl) => lvl.level === activeLevelNumber) || null;
   }, [activeTrade, activeLevelNumber, currentLevels]);
 
-  // Real units for current trade and level, correlated with real LMS authoring courses
   const currentUnits: UnitCourseItem[] = useMemo(() => {
     if (!activeTrade || !activeLevelNumber || !activeTradeId) return [];
 
     const lmsCourses = authoringQuery.data?.data || [];
 
-    // Filter CAP units for this level
     let levelUnits = activeTradeUnits.filter(
       (u) => ((u as { level?: number }).level || 1) === activeLevelNumber
     );
 
-    // If CAP returned units without explicit level tag and this is Level 1, show all units
     if (levelUnits.length === 0 && activeLevelNumber === 1 && activeTradeUnits.length > 0) {
       levelUnits = activeTradeUnits;
     }
 
     return levelUnits.map((u, idx) => {
-      // Find matching LMS course
       const matchedCourse = lmsCourses.find(
         (c) =>
           c.capLinkage?.unitId === u.id ||
@@ -164,7 +140,6 @@ export function useAdminTrades() {
     });
   }, [activeTrade, activeLevelNumber, activeTradeId, activeTradeUnits, authoringQuery.data]);
 
-  // Navigation handlers
   const handleSelectTrade = useCallback(
     (tradeId: string) => {
       router.push(`/admin/courses?tradeId=${tradeId}`);
@@ -192,7 +167,6 @@ export function useAdminTrades() {
     }
   }, [router, activeTradeId]);
 
-  // Modals state
   const [isAddLevelModalOpen, setIsAddLevelModalOpen] = useState(false);
   const [editingLevel, setEditingLevel] = useState<LevelItem | null>(null);
 
@@ -208,7 +182,6 @@ export function useAdminTrades() {
   const [isUploadZipModalOpen, setIsUploadZipModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Level Actions
   const openAddLevelModal = () => {
     setEditingLevel(null);
     setIsAddLevelModalOpen(true);

@@ -26,7 +26,6 @@ export interface AddEditUnitModalProps {
     title: string;
     description?: string;
     price?: number;
-    /** Orchestrator assetId of a SCORM zip that has already finished uploading. */
     packageAssetId?: string | null;
     isPublished?: boolean;
   }) => Promise<void> | void;
@@ -51,43 +50,34 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
   const [isPublished, setIsPublished] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "uploading" | "done" | "error"
+  >("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [packageAssetId, setPackageAssetId] = useState<string | null>(null);
-  // Bumped on every new upload / reset so a stale upload can't overwrite newer state.
   const uploadTokenRef = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const resetUpload = () => {
-    uploadTokenRef.current += 1;
+  const [prevDeps, setPrevDeps] = useState({ unit, isOpen });
+  if (prevDeps.unit !== unit || prevDeps.isOpen !== isOpen) {
+    setPrevDeps({ unit, isOpen });
+    setSubmitError(null);
     setScormFile(null);
     setUploadProgress(0);
     setUploadStatus("idle");
     setUploadError(null);
     setPackageAssetId(null);
-  };
+    setReferenceNumber(unit?.referenceNumber || "001");
+    setTitle(unit?.title || "");
+    setDescription("");
+    setIsFree(true);
+    setPrice(0);
+    setIsPublished(unit ? unit.status === "published" : true);
+  }
 
   useEffect(() => {
-    setSubmitError(null);
-    resetUpload();
-    if (unit) {
-      setReferenceNumber(unit.referenceNumber || "001");
-      setTitle(unit.title || "");
-      setDescription("");
-      setIsFree(true);
-      setPrice(0);
-      setIsPublished(unit.status === "published");
-      setScormFile(null);
-    } else {
-      setReferenceNumber("001");
-      setTitle("");
-      setDescription("");
-      setIsFree(true);
-      setPrice(0);
-      setIsPublished(true);
-      setScormFile(null);
-    }
+    uploadTokenRef.current += 1;
   }, [unit, isOpen]);
 
   const startUpload = async (file: File) => {
@@ -109,14 +99,14 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
       if (uploadTokenRef.current !== token) return;
       setUploadStatus("error");
       setUploadError(
-        (err as { message?: string })?.message || "Upload failed. Click above to try again."
+        (err as { message?: string })?.message ||
+          "Upload failed. Click above to try again.",
       );
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // Clear the input so re-selecting the same file (e.g. after a failure) fires onChange again.
     e.target.value = "";
     if (file) void startUpload(file);
   };
@@ -127,7 +117,9 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
     e.preventDefault();
     if (!title.trim() || !referenceNumber.trim() || isUploading) return;
     if (scormFile && !packageAssetId) {
-      setSubmitError("The SCORM package didn't upload. Select the file again to retry.");
+      setSubmitError(
+        "The SCORM package didn't upload. Select the file again to retry.",
+      );
       return;
     }
     setSubmitError(null);
@@ -143,7 +135,9 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
       });
     } catch (err: unknown) {
       const axiosErr = err as {
-        response?: { data?: { message?: string; error?: { message?: string } } };
+        response?: {
+          data?: { message?: string; error?: { message?: string } };
+        };
         message?: string;
       };
       const errorMsg =
@@ -155,7 +149,8 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
     }
   };
 
-  const displayName = tradeName || (tradeSlotNumber ? `Slot ${tradeSlotNumber}` : "Trade");
+  const displayName =
+    tradeName || (tradeSlotNumber ? `Slot ${tradeSlotNumber}` : "Trade");
 
   return (
     <Modal
@@ -177,10 +172,9 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
       }}
     >
       <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col gap-4">
-        {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#75152b]/10 text-primary-solid flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-primary-solid/10 text-primary-solid flex items-center justify-center shrink-0">
               <FiBookOpen className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -254,11 +248,12 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             />
           </div>
 
-          {/* Pricing Toggle */}
           <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-neutral-primary">Unit Pricing</p>
+                <p className="text-xs font-bold text-neutral-primary">
+                  Unit Pricing
+                </p>
                 <p className="text-[11px] text-neutral-secondary">
                   Free access or standalone enrollment fee
                 </p>
@@ -292,7 +287,9 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
 
             {!isFree && (
               <div className="flex items-center gap-2 pt-1">
-                <span className="text-xs font-bold text-neutral-primary">NGN</span>
+                <span className="text-xs font-bold text-neutral-primary">
+                  NGN
+                </span>
                 <input
                   type="number"
                   min="0"
@@ -306,7 +303,6 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             )}
           </div>
 
-          {/* Optional SCORM Upload */}
           <div>
             <label className="block text-xs font-semibold text-neutral-primary mb-1.5">
               SCORM Package ZIP (Optional)
@@ -321,7 +317,8 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
 
             <div
               onClick={() => {
-                if (!isUploading && !isSubmitting) fileInputRef.current?.click();
+                if (!isUploading && !isSubmitting)
+                  fileInputRef.current?.click();
               }}
               className="border-2 border-dashed border-gray-200 hover:border-primary-solid/40 bg-white hover:bg-input-bg rounded-xl p-3.5 text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
             >
@@ -329,7 +326,8 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
                 <>
                   <FiUploadCloud className="w-5 h-5 text-primary-solid" />
                   <span className="text-xs font-semibold text-neutral-primary truncate max-w-xs">
-                    {scormFile.name} ({(scormFile.size / 1024 / 1024).toFixed(2)} MB)
+                    {scormFile.name} (
+                    {(scormFile.size / 1024 / 1024).toFixed(2)} MB)
                   </span>
                 </>
               ) : (
@@ -346,7 +344,10 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
               <div className="mt-2 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-[11px] text-neutral-secondary">
                   <span className="flex items-center gap-1">
-                    {uploadStatus === "uploading" && "Uploading package..."}
+                    {uploadStatus === "uploading" &&
+                      (uploadProgress >= 99
+                        ? "Processing package..."
+                        : "Uploading package...")}
                     {uploadStatus === "done" && (
                       <>
                         <FiCheck className="w-3 h-3 text-green-600" />
@@ -358,13 +359,15 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
                     )}
                   </span>
                   {uploadStatus !== "error" && (
-                    <span className="font-semibold text-primary-solid">{uploadProgress}%</span>
+                    <span className="font-semibold text-primary-solid">
+                      {uploadProgress}%
+                    </span>
                   )}
                 </div>
                 {uploadStatus !== "error" && (
                   <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary transition-all duration-300 ease-out"
+                      className="h-full rounded-full bg-linear-to-r from-primary-solid via-primary to-secondary transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
@@ -373,7 +376,6 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             )}
           </div>
 
-          {/* Publish Immediately */}
           <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"
@@ -390,7 +392,6 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             </label>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 mt-2">
             <button
               type="button"

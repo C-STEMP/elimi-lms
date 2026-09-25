@@ -21,7 +21,6 @@ export interface TradeLevelsViewProps {
   onManageUnits: (levelNumber: number) => void;
   onAddLevel: () => void;
   onEditLevel: (level: LevelItem) => void;
-  onTogglePublish: (levelNumber: number) => void;
   onDeleteLevel: (level: LevelItem) => void;
 }
 
@@ -32,12 +31,10 @@ export const TradeLevelsView: React.FC<TradeLevelsViewProps> = ({
   onManageUnits,
   onAddLevel,
   onEditLevel,
-  onTogglePublish,
   onDeleteLevel,
 }) => {
   return (
     <div className="flex flex-col gap-6">
-      {/* Back button */}
       <div>
         <button
           type="button"
@@ -49,15 +46,14 @@ export const TradeLevelsView: React.FC<TradeLevelsViewProps> = ({
         </button>
       </div>
 
-      {/* Trade Overview Hero Banner */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#75152b]/10 text-primary-solid flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-primary-solid/10 text-primary-solid flex items-center justify-center shrink-0">
             <FiBriefcase className="w-6 h-6" />
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#75152b]/10 text-primary-solid">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-solid/10 text-primary-solid">
                 {trade.sector?.name || "Vocational Trade"}
               </span>
               <span className="text-xs text-neutral-secondary font-medium">
@@ -85,7 +81,6 @@ export const TradeLevelsView: React.FC<TradeLevelsViewProps> = ({
         </div>
       </div>
 
-      {/* Levels Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <h2 className="text-base sm:text-lg font-bold text-neutral-primary tracking-tight">
           Qualification Levels ({levels.length})
@@ -95,7 +90,6 @@ export const TradeLevelsView: React.FC<TradeLevelsViewProps> = ({
         </span>
       </div>
 
-      {/* Levels List */}
       <div className="flex flex-col gap-3.5">
         {levels.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center flex flex-col items-center justify-center gap-3">
@@ -126,7 +120,6 @@ export const TradeLevelsView: React.FC<TradeLevelsViewProps> = ({
                 key={lvl.id || lvl.level}
                 className="bg-white rounded-2xl border border-gray-100 shadow-2xs hover:shadow-md hover:border-gray-200 transition-all p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
               >
-                {/* Left: Level Icon & Info */}
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-secondary/15 text-secondary-hover flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-105 transition-transform">
                     L{lvl.level}
@@ -168,7 +161,6 @@ export const TradeLevelsView: React.FC<TradeLevelsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Right: Actions */}
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 shrink-0">
                   <button
                     type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Modal } from "antd";
 import { FiX, FiCheck, FiLayers } from "react-icons/fi";
 import type { LevelItem } from "@/features/cap/types";
@@ -23,15 +23,12 @@ export const AddEditLevelModal: React.FC<AddEditLevelModalProps> = ({
   const [levelNum, setLevelNum] = useState<number>(1);
   const [title, setTitle] = useState("");
 
-  useEffect(() => {
-    if (level) {
-      setLevelNum(level.level);
-      setTitle(level.title);
-    } else {
-      setLevelNum(1);
-      setTitle("");
-    }
-  }, [level, isOpen]);
+  const [prevDeps, setPrevDeps] = useState({ level, isOpen });
+  if (prevDeps.level !== level || prevDeps.isOpen !== isOpen) {
+    setPrevDeps({ level, isOpen });
+    setLevelNum(level ? level.level : 1);
+    setTitle(level ? level.title : "");
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +54,7 @@ export const AddEditLevelModal: React.FC<AddEditLevelModalProps> = ({
     >
       <div className="flex items-start justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#75152b]/10 text-primary-solid flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-solid/10 text-primary-solid flex items-center justify-center shrink-0">
             <FiLayers className="w-5 h-5" />
           </div>
           <div>

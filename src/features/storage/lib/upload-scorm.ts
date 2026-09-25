@@ -3,20 +3,17 @@ import {
   confirmUpload,
   uploadFile,
 } from "@/features/storage/api";
+import type { StorageAsset } from "@/features/storage/types";
+import type { ApiError } from "@/shared/types";
 
 export type UploadProgressCallback = (percent: number) => void;
 
 /**
- * Client-side cap for SCORM zips. Packages of 115MB+ exist, so this sits well above them.
- * The effective limit is whatever Orchestrator / the storage provider accepts.
- */
+   * Client-side cap for SCORM zips. Packages of 115MB+ exist, so this sits well above them.
+   * The effective limit is whatever Orchestrator / the storage provider accepts.
+   */
 export const MAX_SCORM_PACKAGE_MB = 200;
 
-/**
- * PUTs the file to the presigned storage URL with byte-level progress reporting.
- * Uses XHR rather than a streaming fetch body: streamed request bodies need HTTP/2,
- * and Cloudinary's upload endpoint negotiates HTTP/1.1 (ERR_ALPN_NEGOTIATION_FAILED).
- */
 function uploadPayload(
   uploadUrl: string,
   file: File,
@@ -36,7 +33,7 @@ function uploadPayload(
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        if (onProgress) onProgress(100);
+        // Hold at 99 — 100 is reported once Orchestrator confirms the asset.
         resolve();
       } else {
         // Cloudinary puts the reason in the JSON body and the x-cld-error header.
@@ -76,49 +73,107 @@ function uploadPayload(
   });
 }
 
+/** Confirm polling: first retry after 2s, backing off to 5s, giving up after 5 minutes. */
+const CONFIRM_INITIAL_DELAY_MS = 2_000;
+const CONFIRM_MAX_DELAY_MS = 5_000;
+const CONFIRM_TIMEOUT_MS = 5 * 60_000;
+
+/** Statuses meaning "the provider hasn't finished processing yet" — keep polling. */
+const CONFIRM_RETRY_STATUSES = new Set([202, 404, 409, 423, 425, 429]);
+
+function isRetryableConfirmError(err: unknown): boolean {
+  const status = (err as Partial<ApiError> | null)?.status;
+  // null status = the request never got a response (network blip) — worth retrying too.
+  if (status === null || status === undefined) return true;
+  return CONFIRM_RETRY_STATUSES.has(status) || status >= 500;
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  const message = (err as Partial<ApiError> | null)?.message;
+  return typeof message === "string" && message ? message : fallback;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Uploads a SCORM .zip package to Orchestrator storage.
- * 1. Obtains presigned upload URL from Orchestrator (/storage/upload-url).
+ * Polls /storage/confirm until Orchestrator reports the asset ready (returns it with a url).
+ * Large packages are processed asynchronously after the PUT, so the first confirm may
+ * answer "not found / not ready" for a while.
+ */
+async function pollConfirmUpload(assetId: string): Promise<StorageAsset> {
+  const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
+  let delay = CONFIRM_INITIAL_DELAY_MS;
+  let lastError: unknown = null;
+
+  while (true) {
+    try {
+      const asset = await confirmUpload({ assetId });
+      if (asset?.assetId && asset.url) return asset;
+    } catch (err) {
+      if (!isRetryableConfirmError(err)) throw err;
+      lastError = err;
+    }
+
+    if (Date.now() + delay > deadline) {
+      throw new Error(
+        `The package uploaded, but storage did not finish processing it in time. ${errorMessage(
+          lastError,
+          "Please try again in a few minutes."
+        )}`
+      );
+    }
+    await sleep(delay);
+    delay = Math.min(CONFIRM_MAX_DELAY_MS, Math.round(delay * 1.5));
+  }
+}
+
+/**
+ * Uploads a SCORM .zip package to Orchestrator storage via the signed-URL route.
+ * 1. Obtains a signed upload URL from Orchestrator (/storage/upload-url).
  * 2. PUTs the file to that URL with real-time byte progress reporting.
- * 3. Confirms upload with Orchestrator (/storage/confirm).
+ * 3. Polls /storage/confirm until the asset is processed.
+ *
+ * The direct /storage/upload route is only used if a signed URL can't be issued at all —
+ * large packages routinely fail through it with network errors, and once the PUT has
+ * started, re-sending the whole file would only mask the real failure.
  */
 export async function uploadScormPackage(
   file: File,
   onProgress?: UploadProgressCallback
 ): Promise<string> {
-  let presignedError: unknown = null;
+  const mimeType = file.type || "application/zip";
+
+  let uploadInfo;
   try {
-    const uploadInfo = await createUploadUrl({
+    uploadInfo = await createUploadUrl({
       fileName: file.name,
-      mimeType: file.type || "application/zip",
+      mimeType,
       purpose: "lms_scorm_package",
     });
-
-    await uploadPayload(uploadInfo.uploadUrl, file, onProgress);
-
-    const confirmed = await confirmUpload({ assetId: uploadInfo.assetId });
-    return confirmed.assetId;
   } catch (err) {
-    presignedError = err;
-    console.error("Presigned upload failed:", err);
+    console.error("Could not get a signed upload URL, falling back to direct upload:", err);
+    try {
+      const directAsset = await uploadFile({ file, purpose: "lms_scorm_package" });
+      if (onProgress) onProgress(100);
+      return directAsset.assetId;
+    } catch (directErr) {
+      throw new Error(
+        errorMessage(
+          directErr,
+          "Failed to upload SCORM package. Please check your network connection and try again."
+        )
+      );
+    }
   }
 
-  // Fallback: direct upload through Orchestrator (for smaller packages or if presigned URL is unavailable)
+  await uploadPayload(uploadInfo.uploadUrl, file, onProgress);
+
   try {
-    console.info("Attempting direct upload fallback...");
-    const directAsset = await uploadFile({
-      file,
-      purpose: "lms_scorm_package",
-    });
+    const confirmed = await pollConfirmUpload(uploadInfo.assetId);
     if (onProgress) onProgress(100);
-    return directAsset.assetId;
-  } catch (directErr) {
-    console.error("Direct upload fallback also failed:", directErr);
-    const finalErr = presignedError || directErr;
-    throw finalErr instanceof Error
-      ? finalErr
-      : new Error(
-          "Failed to upload SCORM package. Please check your network connection and try again."
-        );
+    return confirmed.assetId;
+  } catch (err) {
+    throw new Error(errorMessage(err, "Failed to confirm the SCORM package upload."));
   }
 }

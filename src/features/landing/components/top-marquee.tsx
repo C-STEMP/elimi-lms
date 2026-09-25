@@ -19,10 +19,9 @@ export const TopMarquee: React.FC = () => {
                 <Image
                   src="/elimi-e.svg"
                   alt="Elimi"
-                  className="object-contain"
-                  width={18}
+                  className="object-contain w-10.25 h-4.5"
+                  width={41}
                   height={18}
-                  style={{ width: "auto", height: "18px" }}
                   priority
                 />
               </Link>

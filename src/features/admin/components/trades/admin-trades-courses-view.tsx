@@ -13,7 +13,6 @@ import { useAdminTrades } from "../../hooks/use-admin-trades";
 
 export const AdminTradesCoursesView: React.FC = () => {
   const {
-    // Current navigation state
     activeTradeId,
     activeLevelNumber,
     activeTrade,
@@ -21,24 +20,20 @@ export const AdminTradesCoursesView: React.FC = () => {
     currentLevels,
     currentUnits,
 
-    // Core list
     capTrades,
     isSubmitting,
 
-    // Navigation callbacks
     handleSelectTrade,
     handleSelectLevel,
     handleBackToTrades,
     handleBackToLevels,
 
-    // Levels
     isAddLevelModalOpen,
     editingLevel,
     openAddLevelModal,
     openEditLevelModal,
     closeAddLevelModal,
     handleSaveLevel,
-    handleTogglePublishLevel,
 
     isDeleteLevelConfirmOpen,
     deletingLevel,
@@ -46,7 +41,6 @@ export const AdminTradesCoursesView: React.FC = () => {
     closeDeleteLevelConfirm,
     handleConfirmDeleteLevel,
 
-    // Units
     isAddUnitModalOpen,
     editingUnit,
     openAddUnitModal,
@@ -60,13 +54,11 @@ export const AdminTradesCoursesView: React.FC = () => {
     closeDeleteUnitConfirm,
     handleConfirmDeleteUnit,
 
-    // Zip upload
     isUploadZipModalOpen,
     openUploadZipModal,
     closeUploadZipModal,
     handleUploadZipPackage,
 
-    // Backend states
     isLoadingCapTrades,
     isCapTradesError,
     refetchCapTrades,
@@ -74,10 +66,8 @@ export const AdminTradesCoursesView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col gap-4 pb-8">
-      {/* Top Admin Header */}
       <AdminHeader title="Trades & Courses" />
 
-      {/* Dynamic View rendering based on drilldown state */}
       {activeTradeId === null && (
         <AdminTradesListView
           trades={capTrades}
@@ -96,7 +86,6 @@ export const AdminTradesCoursesView: React.FC = () => {
           onManageUnits={handleSelectLevel}
           onAddLevel={openAddLevelModal}
           onEditLevel={openEditLevelModal}
-          onTogglePublish={handleTogglePublishLevel}
           onDeleteLevel={openDeleteLevelConfirm}
         />
       )}
@@ -117,7 +106,6 @@ export const AdminTradesCoursesView: React.FC = () => {
           />
         )}
 
-      {/* Modals */}
       <AddEditLevelModal
         isOpen={isAddLevelModalOpen}
         level={editingLevel}

@@ -29,8 +29,6 @@ export const CreateCourseStepTwo: React.FC<CreateCourseStepTwoProps> = ({
   const isUploading = data.uploadStatus === "uploading";
   const isUploadPending = Boolean(data.scormFile) && !data.packageAssetId;
 
-  // Updates only apply while `file` is still the selected one, so a replaced/removed file's
-  // late progress or result can't overwrite the current selection.
   const updateUpload = (file: File, patch: Partial<CreateCourseStepTwoData>) =>
     onChange((prev) => (prev.scormFile === file ? { ...prev, ...patch } : prev));
 
@@ -78,7 +76,7 @@ export const CreateCourseStepTwo: React.FC<CreateCourseStepTwoProps> = ({
         <div className="-mt-2 flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-[11px] text-neutral-secondary">
             <span>
-              {data.uploadStatus === "uploading" && "Uploading package..."}
+              {data.uploadStatus === "uploading" && (data.uploadProgress >= 99 ? "Processing package..." : "Uploading package...")}
               {data.uploadStatus === "done" && "✓ Package uploaded"}
               {data.uploadStatus === "error" && (
                 <span className="text-red-600">{data.uploadError}</span>
@@ -91,7 +89,7 @@ export const CreateCourseStepTwo: React.FC<CreateCourseStepTwoProps> = ({
           {data.uploadStatus !== "error" && (
             <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary transition-all duration-300 ease-out"
+                className="h-full rounded-full bg-linear-to-r from-primary-solid via-primary to-secondary transition-all duration-300 ease-out"
                 style={{ width: `${data.uploadProgress}%` }}
               />
             </div>

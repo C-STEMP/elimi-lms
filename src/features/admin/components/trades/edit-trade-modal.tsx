@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Modal } from "antd";
 import { FiX, FiCheck, FiEdit2 } from "react-icons/fi";
 import type { TradeSlot } from "@/features/cap/types";
@@ -18,15 +18,17 @@ export const EditTradeModal: React.FC<EditTradeModalProps> = ({
   onClose,
   onUpdate,
 }) => {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState(slot?.name || "");
+  const [description, setDescription] = useState(slot?.description || "");
 
-  useEffect(() => {
+  const [prevSlot, setPrevSlot] = useState(slot);
+  if (prevSlot !== slot) {
+    setPrevSlot(slot);
     if (slot) {
       setName(slot.name || "");
       setDescription(slot.description || "");
     }
-  }, [slot]);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +54,7 @@ export const EditTradeModal: React.FC<EditTradeModalProps> = ({
     >
       <div className="flex items-start justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#75152b]/10 text-primary-solid flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-solid/10 text-primary-solid flex items-center justify-center shrink-0">
             <FiEdit2 className="w-5 h-5" />
           </div>
           <div>

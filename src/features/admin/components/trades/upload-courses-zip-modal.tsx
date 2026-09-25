@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Modal } from "antd";
 import {
   FiX,
@@ -20,7 +20,7 @@ export interface UploadCoursesZipModalProps {
   onClose: () => void;
   onUpload: (
     file: File,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
   ) => Promise<void> | void;
 }
 
@@ -42,15 +42,16 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Clear state on modal open/close
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
       setSelectedFile(null);
       setUploadState("idle");
       setUploadProgress(0);
       setErrorMessage(null);
     }
-  }, [isOpen]);
+  }
 
   const handleStartAutoUpload = async (file: File) => {
     setSelectedFile(file);
@@ -61,14 +62,13 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
     try {
       await onUpload(file, (percent) => {
         setUploadProgress(percent);
-        if (percent >= 100) {
+        if (percent >= 99) {
           setUploadState("processing");
         }
       });
       setUploadProgress(100);
       setUploadState("success");
 
-      // Auto close after brief success celebration
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -76,7 +76,8 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
       setUploadState("error");
       const errObj = err as { message?: string };
       setErrorMessage(
-        errObj?.message || "Failed to upload and process SCORM package. Please try again."
+        errObj?.message ||
+          "Failed to upload and process SCORM package. Please try again.",
       );
     }
   };
@@ -97,7 +98,10 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
     if (uploadState === "uploading" || uploadState === "processing") return;
 
     const file = e.dataTransfer.files?.[0];
-    if (file && (file.name.endsWith(".zip") || file.type === "application/zip")) {
+    if (
+      file &&
+      (file.name.endsWith(".zip") || file.type === "application/zip")
+    ) {
       handleStartAutoUpload(file);
     }
   };
@@ -116,7 +120,8 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
     setErrorMessage(null);
   };
 
-  const displayName = tradeName || (tradeSlotNumber ? `Slot ${tradeSlotNumber}` : "Trade");
+  const displayName =
+    tradeName || (tradeSlotNumber ? `Slot ${tradeSlotNumber}` : "Trade");
 
   return (
     <Modal
@@ -140,10 +145,9 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
       }}
     >
       <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col gap-4">
-        {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#75152b]/10 text-primary-solid flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-primary-solid/10 text-primary-solid flex items-center justify-center shrink-0">
               <FiUploadCloud className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -158,7 +162,9 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            disabled={uploadState === "uploading" || uploadState === "processing"}
+            disabled={
+              uploadState === "uploading" || uploadState === "processing"
+            }
             aria-label="Close"
             className="text-neutral-secondary hover:text-neutral-primary p-2 -mr-1 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer disabled:opacity-30"
           >
@@ -166,7 +172,6 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
           </button>
         </div>
 
-        {/* Hidden File Input */}
         <input
           type="file"
           ref={fileInputRef}
@@ -175,7 +180,6 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
           className="hidden"
         />
 
-        {/* Drop/Browse Zone (shown when idle or after error/cancel) */}
         {uploadState === "idle" && (
           <div
             onDragOver={handleDragOver}
@@ -207,10 +211,8 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
           </div>
         )}
 
-        {/* Uploading Card with embedded Progress Bar */}
         {selectedFile && uploadState !== "idle" && (
           <div className="bg-white border border-gray-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col gap-3.5">
-            {/* Top row: File Icon, Name, Size & Status Badge */}
             <div className="flex items-center justify-between gap-3 min-w-0">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div
@@ -218,8 +220,8 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
                     uploadState === "success"
                       ? "bg-emerald-50 text-emerald-600"
                       : uploadState === "error"
-                      ? "bg-red-50 text-red-600"
-                      : "bg-[#75152b]/10 text-primary-solid"
+                        ? "bg-red-50 text-red-600"
+                        : "bg-primary-solid/10 text-primary-solid"
                   }`}
                 >
                   {uploadState === "success" ? (
@@ -241,10 +243,9 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
                 </div>
               </div>
 
-              {/* Progress Percentage or Status Badge */}
               <div className="shrink-0">
                 {uploadState === "uploading" && (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#75152b]/10 text-primary-solid">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary-solid/10 text-primary-solid">
                     {uploadProgress}%
                   </span>
                 )}
@@ -268,21 +269,19 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
               </div>
             </div>
 
-            {/* Embedded Progress Bar */}
             <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ease-out ${
                   uploadState === "success"
                     ? "bg-emerald-500"
                     : uploadState === "error"
-                    ? "bg-red-500"
-                    : "bg-gradient-to-r from-primary-solid via-[#aa1d3f] to-secondary"
+                      ? "bg-red-500"
+                      : "bg-linear-to-r from-primary-solid via-primary to-secondary"
                 }`}
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
 
-            {/* Bottom Row inside Card: Helper label & Action */}
             <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs">
               <div className="text-neutral-secondary truncate">
                 {uploadState === "uploading" && (
@@ -305,9 +304,9 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
                 )}
               </div>
 
-              {/* Card Actions */}
               <div>
-                {(uploadState === "uploading" || uploadState === "processing") && (
+                {(uploadState === "uploading" ||
+                  uploadState === "processing") && (
                   <button
                     type="button"
                     onClick={handleCancelUpload}
@@ -340,12 +339,13 @@ export const UploadCoursesZipModal: React.FC<UploadCoursesZipModalProps> = ({
           </div>
         )}
 
-        {/* Modal Bottom Footer */}
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
           <button
             type="button"
             onClick={onClose}
-            disabled={uploadState === "uploading" || uploadState === "processing"}
+            disabled={
+              uploadState === "uploading" || uploadState === "processing"
+            }
             className="w-full sm:w-auto py-2.5 px-5 rounded-xl border border-gray-200 hover:bg-gray-50 text-neutral-primary font-semibold text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-40 text-center"
           >
             {uploadState === "success" ? "Done" : "Cancel"}

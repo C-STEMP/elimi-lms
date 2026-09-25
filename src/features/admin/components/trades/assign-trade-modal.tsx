@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Modal } from "antd";
 import { FiX, FiBriefcase, FiCheck } from "react-icons/fi";
 import type { Trade } from "@/features/cap/types";
@@ -29,15 +29,17 @@ export const AssignTradeModal: React.FC<AssignTradeModalProps> = ({
   const [customTitle, setCustomTitle] = useState("");
   const [customDesc, setCustomDesc] = useState("");
 
-  useEffect(() => {
+  // Preselect the first trade while rendering when the modal opens or the list changes.
+  const [prevDeps, setPrevDeps] = useState({ isOpen, availableTrades });
+  if (prevDeps.isOpen !== isOpen || prevDeps.availableTrades !== availableTrades) {
+    setPrevDeps({ isOpen, availableTrades });
     if (isOpen) {
-      const first = availableTrades[0]?.id || "";
-      setSelectedTradeId(first);
-      const trade = availableTrades.find((t) => t.id === first);
-      setCustomTitle(trade?.name || "");
-      setCustomDesc(trade?.description || "");
+      const first = availableTrades[0];
+      setSelectedTradeId(first?.id || "");
+      setCustomTitle(first?.name || "");
+      setCustomDesc(first?.description || "");
     }
-  }, [isOpen, availableTrades]);
+  }
 
   const handleTradeChange = (tradeId: string) => {
     setSelectedTradeId(tradeId);
@@ -72,7 +74,7 @@ export const AssignTradeModal: React.FC<AssignTradeModalProps> = ({
     >
       <div className="flex items-start justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#75152b]/10 text-primary-solid flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-solid/10 text-primary-solid flex items-center justify-center shrink-0">
             <FiBriefcase className="w-5 h-5" />
           </div>
           <div>
