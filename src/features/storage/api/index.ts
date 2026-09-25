@@ -11,14 +11,23 @@ import type {
   UploadUrlResult,
 } from "@/features/storage/types";
 
-/** Small files (photos, logos) — uploaded directly through Orchestrator. */
-export function uploadFile({ file, purpose }: UploadFileInput) {
+/** Small files and direct uploads (photos, logos, SCORM packages) — uploaded directly through Orchestrator. */
+export function uploadFile({ file, purpose, onProgress }: UploadFileInput) {
   const formData = new FormData();
   formData.append("file", file);
   if (purpose) formData.append("purpose", purpose);
   return unwrapItem<StorageAsset>(
     orchestratorClient.post("/storage/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onProgress) {
+          const percent = Math.min(
+            99,
+            Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          );
+          onProgress(percent);
+        }
+      },
     })
   );
 }

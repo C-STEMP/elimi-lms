@@ -19,6 +19,7 @@ export type GenericMessage = {
 export type UploadFileInput = {
   file: File;
   purpose?: string;
+  onProgress?: (percent: number) => void;
 };
 
 export type CreateUploadUrlInput = {

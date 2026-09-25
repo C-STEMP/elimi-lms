@@ -9,15 +9,13 @@ import {
   getCapTradeUnits,
 } from "@/features/cap";
 import type { LevelItem, UnitCourseItem } from "@/features/cap/types";
-import {
-  useAuthoringCourses,
-  courseKeys,
-} from "@/features/courses/hooks";
+import { useAuthoringCourses, courseKeys } from "@/features/courses/hooks";
 import {
   createCourse,
   updateCourse,
   publishCourse,
 } from "@/features/courses/api";
+import type { CapLinkage } from "@/features/courses/types";
 import { uploadScormPackage } from "@/features/storage";
 import type { ApiError } from "@/shared/types";
 import {
@@ -31,7 +29,10 @@ export function useAdminTrades() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  const tradeIdParam = searchParams.get("tradeId") || searchParams.get("trade") || searchParams.get("slot");
+  const tradeIdParam =
+    searchParams.get("tradeId") ||
+    searchParams.get("trade") ||
+    searchParams.get("slot");
   const levelParam = searchParams.get("level");
 
   const activeLevelNumber = levelParam ? parseInt(levelParam, 10) : null;
@@ -52,7 +53,9 @@ export function useAdminTrades() {
 
   const activeTrade = useMemo(() => {
     if (!tradeIdParam) return null;
-    const foundById = capTrades.find((t) => t.id === tradeIdParam || t.slug === tradeIdParam);
+    const foundById = capTrades.find(
+      (t) => t.id === tradeIdParam || t.slug === tradeIdParam,
+    );
     if (foundById) return foundById;
 
     const slotIndex = parseInt(tradeIdParam, 10);
@@ -66,14 +69,16 @@ export function useAdminTrades() {
 
   const { data: activeTradeDetail = null } = useQuery({
     queryKey: ["cap", "trade-detail", activeTradeId],
-    queryFn: () => (activeTradeId ? getCapTradeDetail(activeTradeId) : Promise.resolve(null)),
+    queryFn: () =>
+      activeTradeId ? getCapTradeDetail(activeTradeId) : Promise.resolve(null),
     enabled: Boolean(activeTradeId),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: activeTradeUnits = [], isLoading: isLoadingUnits } = useQuery({
     queryKey: ["cap", "trade-units", activeTradeId],
-    queryFn: () => (activeTradeId ? getCapTradeUnits(activeTradeId) : Promise.resolve([])),
+    queryFn: () =>
+      activeTradeId ? getCapTradeUnits(activeTradeId) : Promise.resolve([]),
     enabled: Boolean(activeTradeId),
     staleTime: 5 * 60 * 1000,
   });
@@ -87,9 +92,15 @@ export function useAdminTrades() {
     return Array.from({ length: effectiveLevelCount }, (_, idx) => {
       const levelNum = idx + 1;
       const unitsInThisLevel = unitsList.filter(
-        (u) => ((u as { level?: number }).level || 1) === levelNum
+        (u) => ((u as { level?: number }).level || 1) === levelNum,
       );
-      const totalUnits = unitsInThisLevel.length > 0 ? unitsInThisLevel.length : Math.max(0, Math.floor((activeTrade.unitCount || 0) / effectiveLevelCount));
+      const totalUnits =
+        unitsInThisLevel.length > 0
+          ? unitsInThisLevel.length
+          : Math.max(
+              0,
+              Math.floor((activeTrade.unitCount || 0) / effectiveLevelCount),
+            );
 
       return {
         id: `level-${levelNum}-${activeTrade.id}`,
@@ -113,23 +124,35 @@ export function useAdminTrades() {
     const lmsCourses = authoringQuery.data?.data || [];
 
     let levelUnits = activeTradeUnits.filter(
-      (u) => ((u as { level?: number }).level || 1) === activeLevelNumber
+      (u) => ((u as { level?: number }).level || 1) === activeLevelNumber,
     );
 
-    if (levelUnits.length === 0 && activeLevelNumber === 1 && activeTradeUnits.length > 0) {
+    if (
+      levelUnits.length === 0 &&
+      activeLevelNumber === 1 &&
+      activeTradeUnits.length > 0
+    ) {
       levelUnits = activeTradeUnits;
     }
 
     return levelUnits.map((u, idx) => {
-      const matchedCourse = lmsCourses.find(
-        (c) =>
-          c.capLinkage?.unitId === u.id ||
-          c.title?.toLowerCase() === u.title?.toLowerCase()
-      );
+      const matchedCourse = lmsCourses.find((c) => {
+        const linkageUnitIds = Array.isArray(c.capLinkage?.unitIds)
+          ? c.capLinkage.unitIds.filter(Boolean)
+          : [];
+        if (linkageUnitIds.includes(u.id)) return true;
+        if (c.title?.trim().toLowerCase() === u.title?.trim().toLowerCase())
+          return true;
+        if (u.referenceNumber && c.description?.includes(u.referenceNumber))
+          return true;
+        return false;
+      });
 
       return {
         id: u.id,
-        referenceNumber: u.referenceNumber || `U-${activeLevelNumber}-${String(idx + 1).padStart(2, "0")}`,
+        referenceNumber:
+          u.referenceNumber ||
+          `U-${activeLevelNumber}-${String(idx + 1).padStart(2, "0")}`,
         title: u.title,
         status: matchedCourse?.status === "published" ? "published" : "draft",
         path: matchedCourse ? `/courses/${matchedCourse.id}` : "",
@@ -138,21 +161,29 @@ export function useAdminTrades() {
         levelNumber: activeLevelNumber,
       };
     });
-  }, [activeTrade, activeLevelNumber, activeTradeId, activeTradeUnits, authoringQuery.data]);
+  }, [
+    activeTrade,
+    activeLevelNumber,
+    activeTradeId,
+    activeTradeUnits,
+    authoringQuery.data,
+  ]);
 
   const handleSelectTrade = useCallback(
     (tradeId: string) => {
       router.push(`/admin/courses?tradeId=${tradeId}`);
     },
-    [router]
+    [router],
   );
 
   const handleSelectLevel = useCallback(
     (levelNumber: number) => {
       if (!activeTradeId) return;
-      router.push(`/admin/courses?tradeId=${activeTradeId}&level=${levelNumber}`);
+      router.push(
+        `/admin/courses?tradeId=${activeTradeId}&level=${levelNumber}`,
+      );
     },
-    [router, activeTradeId]
+    [router, activeTradeId],
   );
 
   const handleBackToTrades = useCallback(() => {
@@ -170,7 +201,8 @@ export function useAdminTrades() {
   const [isAddLevelModalOpen, setIsAddLevelModalOpen] = useState(false);
   const [editingLevel, setEditingLevel] = useState<LevelItem | null>(null);
 
-  const [isDeleteLevelConfirmOpen, setIsDeleteLevelConfirmOpen] = useState(false);
+  const [isDeleteLevelConfirmOpen, setIsDeleteLevelConfirmOpen] =
+    useState(false);
   const [deletingLevel, setDeletingLevel] = useState<LevelItem | null>(null);
 
   const [isAddUnitModalOpen, setIsAddUnitModalOpen] = useState(false);
@@ -257,12 +289,17 @@ export function useAdminTrades() {
     if (!activeTrade || !targetLevel) return;
     setIsSubmitting(true);
     try {
-      let courseId = editingUnit?.courseId || draftUnitCourseIdRef.current || undefined;
+      let courseId =
+        editingUnit?.courseId || draftUnitCourseIdRef.current || undefined;
 
       // Refuse to publish an empty unit up front, before anything is written.
-      if (payload.isPublished && !payload.packageAssetId && !(courseId && (await courseHasContent(courseId)))) {
+      if (
+        payload.isPublished &&
+        !payload.packageAssetId &&
+        !(courseId && (await courseHasContent(courseId)))
+      ) {
         throw new Error(
-          "Upload a SCORM package to publish this unit, or untick \"Publish immediately\" to save it as a draft."
+          'Upload a SCORM package to publish this unit, or untick "Publish immediately" to save it as a draft.',
         );
       }
 
@@ -282,15 +319,17 @@ export function useAdminTrades() {
         });
       } else {
         const realUnitId =
-          editingUnit?.id && !editingUnit.id.startsWith("unit-") ? editingUnit.id : null;
+          editingUnit?.id && !editingUnit.id.startsWith("unit-")
+            ? editingUnit.id
+            : null;
 
         const capLinkage = {
           sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
           tradeId: activeTrade.id || null,
-          unitId: realUnitId,
-        };
+          unitIds: realUnitId ? [realUnitId] : [],
+        } satisfies CapLinkage;
 
-        const course = await createCourse({
+        const createCoursePayload = {
           title: payload.title,
           description:
             payload.description ||
@@ -301,10 +340,45 @@ export function useAdminTrades() {
             requireAllRequiredItems: true,
             requirePassedAssessments: true,
           },
-          capLinkage,
-        });
+        };
+
+        let course;
+        try {
+          course = await createCourse({
+            ...createCoursePayload,
+            capLinkage,
+          });
+        } catch (createErr: unknown) {
+          const apiErr = createErr as ApiError | undefined;
+          const isUnitLinkageError =
+            apiErr?.details?.some(
+              (d) =>
+                d.field?.includes("capLinkage.unitId") ||
+                d.field?.includes("capLinkage.unitIds"),
+            ) ||
+            apiErr?.message?.includes("cannot resolve CapLinkage ancestors") ||
+            apiErr?.message?.includes("Unknown CAP unitId");
+
+          if (isUnitLinkageError && capLinkage.unitIds?.length) {
+            console.warn(
+              "CAP unitId could not be resolved by LMS, retrying course creation without unitIds:",
+              capLinkage.unitIds,
+            );
+            course = await createCourse({
+              ...createCoursePayload,
+              capLinkage: {
+                sectorId: capLinkage.sectorId ?? null,
+                tradeId: capLinkage.tradeId ?? null,
+                unitIds: [],
+              },
+            });
+          } else {
+            throw createErr;
+          }
+        }
+
         courseId = course.id;
-        if (!editingUnit) draftUnitCourseIdRef.current = courseId;
+        draftUnitCourseIdRef.current = courseId;
       }
 
       if (packageAssetId) {
@@ -322,11 +396,19 @@ export function useAdminTrades() {
       draftUnitCourseIdRef.current = null;
       closeAddUnitModal();
     } catch (err: unknown) {
-      console.error("Failed to save unit course to LMS:", (err as ApiError)?.message, err);
+      console.error(
+        "Failed to save unit course to LMS:",
+        (err as ApiError)?.message,
+        err,
+      );
       throw err;
     } finally {
-      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-      await queryClient.invalidateQueries({ queryKey: ["cap", "trade-units", activeTradeId] });
+      await queryClient.invalidateQueries({
+        queryKey: courseKeys.authoringLists(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["cap", "trade-units", activeTradeId],
+      });
       setIsSubmitting(false);
     }
   };
@@ -356,19 +438,21 @@ export function useAdminTrades() {
 
   const handleUploadZip = async (
     file: File,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
   ) => {
     if (!activeTrade || !activeLevel) return;
     setIsSubmitting(true);
     try {
       const packageAssetId = await uploadScormPackage(file, onProgress);
-      const courseTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      const courseTitle = file.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[-_]/g, " ");
 
       const capLinkage = {
         sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
         tradeId: activeTrade.id || null,
-        unitId: null,
-      };
+        unitIds: [],
+      } satisfies CapLinkage;
 
       const course = await createCourse({
         title: courseTitle,
@@ -388,11 +472,19 @@ export function useAdminTrades() {
         throw new CourseContentError(course.id, attachErr);
       }
     } catch (err: unknown) {
-      console.error("Failed to upload SCORM course:", (err as ApiError)?.message, err);
+      console.error(
+        "Failed to upload SCORM course:",
+        (err as ApiError)?.message,
+        err,
+      );
       throw err;
     } finally {
-      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-      await queryClient.invalidateQueries({ queryKey: ["cap", "trade-units", activeTradeId] });
+      await queryClient.invalidateQueries({
+        queryKey: courseKeys.authoringLists(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["cap", "trade-units", activeTradeId],
+      });
       setIsSubmitting(false);
     }
   };
