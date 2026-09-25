@@ -69,7 +69,7 @@ export const CourseAdminCard: React.FC<CourseAdminCardProps> = ({
           <button
             type="button"
             onClick={() => onPublish?.(course.id)}
-            className="py-2.5 px-3 rounded-xl bg-primary-solid hover:bg-primary-hover text-white font-semibold text-xs transition-colors cursor-pointer text-center shadow-2xs"
+            className="flex-1 py-2.5 px-3 rounded-xl bg-primary-solid hover:bg-primary-hover text-white font-semibold text-xs transition-colors cursor-pointer text-center shadow-sm"
           >
             Publish
           </button>
@@ -77,7 +77,7 @@ export const CourseAdminCard: React.FC<CourseAdminCardProps> = ({
           <button
             type="button"
             onClick={() => onUnpublish?.(course.id)}
-            className="py-2.5 px-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-neutral-secondary font-semibold text-xs transition-colors cursor-pointer text-center shadow-2xs"
+            className="flex-1 py-2.5 px-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-neutral-secondary font-semibold text-xs transition-colors cursor-pointer text-center shadow-2xs"
           >
             Unpublish
           </button>

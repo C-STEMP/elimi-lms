@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiArrowRight, FiCheck } from "react-icons/fi";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/button";
 import { useToast } from "@/shared/components/ui/toast";
 import { useSubmitOnboarding } from "@/features/onboarding/hooks";
-import { getCapTrades } from "@/features/cap";
 import type { LmsPersonaType } from "@/shared/types";
 
 export interface OnboardingInterestsProps {
@@ -15,6 +13,15 @@ export interface OnboardingInterestsProps {
   onBack: () => void;
   onComplete: () => void;
 }
+
+// Static list — learners don't call CAP (trades/sectors are admin-only reference data).
+const INTEREST_OPTIONS = [
+  "Plumbing",
+  "Cosmetology",
+  "Masonry Works",
+  "Painting and Decoration",
+  "Air Conditioning & Refrigeration",
+];
 
 export const OnboardingInterests: React.FC<OnboardingInterestsProps> = ({
   persona,
@@ -25,24 +32,6 @@ export const OnboardingInterests: React.FC<OnboardingInterestsProps> = ({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const { mutate: submitOnboarding, isPending: isCompleting } = useSubmitOnboarding(persona);
 
-  const { data: capTrades = [], isLoading: isLoadingTrades } = useQuery({
-    queryKey: ["cap", "trades"],
-    queryFn: getCapTrades,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const availableOptions = useMemo(() => {
-    if (capTrades.length > 0) {
-      return capTrades.map((t) => t.name);
-    }
-    return [
-      "Plumbing",
-      "Cosmetology",
-      "Masonry Works",
-      "Painting and Decoration",
-      "Air Conditioning & Refrigeration",
-    ];
-  }, [capTrades]);
 
   const toggleInterest = (interest: string) => {
     setSelected((prev) => {
@@ -84,7 +73,7 @@ export const OnboardingInterests: React.FC<OnboardingInterestsProps> = ({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {availableOptions.map((interest) => {
+        {INTEREST_OPTIONS.map((interest) => {
           const isSelected = selected.has(interest);
           return (
             <button

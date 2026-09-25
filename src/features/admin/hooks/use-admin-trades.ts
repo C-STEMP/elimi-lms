@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,11 +21,15 @@ import {
 import {
   createCourse,
   updateCourse,
-  createModule,
-  createItem,
   publishCourse,
 } from "@/features/courses/api";
 import { uploadScormPackage } from "@/features/storage";
+import type { ApiError } from "@/shared/types";
+import {
+  attachScormPackage,
+  courseHasContent,
+  CourseContentError,
+} from "../services/course-authoring-flow";
 
 export function useAdminTrades() {
   const router = useRouter();
@@ -243,12 +247,18 @@ export function useAdminTrades() {
   };
 
   // Unit Actions
+  // Draft left behind when a new unit's course saved but its content/publish step failed,
+  // so resubmitting the modal updates that course instead of creating a duplicate.
+  const draftUnitCourseIdRef = useRef<string | null>(null);
+
   const openAddUnitModal = () => {
+    draftUnitCourseIdRef.current = null;
     setEditingUnit(null);
     setIsAddUnitModalOpen(true);
   };
 
   const openEditUnitModal = (unit: UnitCourseItem) => {
+    draftUnitCourseIdRef.current = null;
     setEditingUnit(unit);
     setIsAddUnitModalOpen(true);
   };
@@ -275,16 +285,30 @@ export function useAdminTrades() {
     if (!activeTrade || !targetLevel) return;
     setIsSubmitting(true);
     try {
-      let courseId = editingUnit?.courseId;
+      let courseId = editingUnit?.courseId || draftUnitCourseIdRef.current || undefined;
+
+      // Refuse to publish an empty unit up front, before anything is written.
+      if (payload.isPublished && !payload.scormFile && !(courseId && (await courseHasContent(courseId)))) {
+        throw new Error(
+          "Upload a SCORM package to publish this unit, or untick \"Publish immediately\" to save it as a draft."
+        );
+      }
+
+      // Upload first so a failed upload never leaves an empty course behind.
+      const packageAssetId = payload.scormFile
+        ? await uploadScormPackage(payload.scormFile, payload.onProgress)
+        : null;
+
+      const price = {
+        amountMinorUnits: String(Math.round((payload.price || 0) * 100)),
+        currency: "NGN",
+      };
 
       if (courseId) {
         await updateCourse(courseId, {
           title: payload.title,
           description: payload.description,
-          price: {
-            amountMinorUnits: String(Math.round((payload.price || 0) * 100)),
-            currency: "NGN",
-          },
+          price,
         });
       } else {
         const realUnitId =
@@ -301,10 +325,7 @@ export function useAdminTrades() {
           description:
             payload.description ||
             `Competency unit ${payload.referenceNumber} for ${activeTrade.name}, Level ${targetLevel.level}`,
-          price: {
-            amountMinorUnits: String(Math.round((payload.price || 0) * 100)),
-            currency: "NGN",
-          },
+          price,
           completionPolicy: {
             minPercent: 80,
             requireAllRequiredItems: true,
@@ -313,53 +334,29 @@ export function useAdminTrades() {
           capLinkage,
         });
         courseId = course.id;
+        if (!editingUnit) draftUnitCourseIdRef.current = courseId;
       }
 
-      if (courseId && payload.scormFile) {
+      if (packageAssetId) {
         try {
-          const packageAssetId = await uploadScormPackage(
-            payload.scormFile,
-            payload.onProgress
-          );
-          const courseModule = await createModule(courseId, {
-            title: "Module 1: Course Content",
-            order: 1,
-          });
-          await createItem(courseId, courseModule.id, {
-            title: payload.title,
-            type: "scorm_package",
-            order: 1,
-            required: true,
-            packageAssetId,
-          });
-        } catch (scormErr) {
-          console.error("Failed to attach SCORM file for unit:", scormErr);
+          await attachScormPackage(courseId, packageAssetId, payload.title);
+        } catch (attachErr) {
+          throw new CourseContentError(courseId, attachErr);
         }
       }
 
-      if (courseId && payload.isPublished) {
-        try {
-          await publishCourse(courseId);
-        } catch (pubErr) {
-          console.warn("Could not publish course immediately:", pubErr);
-        }
+      if (payload.isPublished) {
+        await publishCourse(courseId);
       }
-      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-      await queryClient.invalidateQueries({ queryKey: ["cap", "trade-units", activeTradeId] });
+
+      draftUnitCourseIdRef.current = null;
       closeAddUnitModal();
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; error?: { message?: string } } };
-        message?: string;
-      };
-      const detail =
-        axiosErr?.response?.data?.message ||
-        axiosErr?.response?.data?.error?.message ||
-        axiosErr?.message ||
-        JSON.stringify(axiosErr?.response?.data || {});
-      console.error("Failed to save unit course to LMS:", detail, err);
+      console.error("Failed to save unit course to LMS:", (err as ApiError)?.message, err);
       throw err;
     } finally {
+      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
+      await queryClient.invalidateQueries({ queryKey: ["cap", "trade-units", activeTradeId] });
       setIsSubmitting(false);
     }
   };
@@ -415,34 +412,17 @@ export function useAdminTrades() {
         capLinkage,
       });
 
-      const courseModule = await createModule(course.id, {
-        title: "Module 1: Course Content",
-        order: 1,
-      });
-
-      await createItem(course.id, courseModule.id, {
-        title: courseTitle,
-        type: "scorm_package",
-        order: 1,
-        required: true,
-        packageAssetId,
-      });
-
-      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-      await queryClient.invalidateQueries({ queryKey: ["cap", "trade-units", activeTradeId] });
+      try {
+        await attachScormPackage(course.id, packageAssetId, courseTitle);
+      } catch (attachErr) {
+        throw new CourseContentError(course.id, attachErr);
+      }
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string; error?: { message?: string } } };
-        message?: string;
-      };
-      const detail =
-        axiosErr?.response?.data?.message ||
-        axiosErr?.response?.data?.error?.message ||
-        axiosErr?.message ||
-        JSON.stringify(axiosErr?.response?.data || {});
-      console.error("Failed to upload SCORM course:", detail, err);
+      console.error("Failed to upload SCORM course:", (err as ApiError)?.message, err);
       throw err;
     } finally {
+      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
+      await queryClient.invalidateQueries({ queryKey: ["cap", "trade-units", activeTradeId] });
       setIsSubmitting(false);
     }
   };

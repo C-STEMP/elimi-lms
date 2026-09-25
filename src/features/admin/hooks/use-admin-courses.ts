@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthoringCourses, courseKeys } from "@/features/courses/hooks";
 import { publishCourse, unpublishCourse } from "@/features/courses/api";
-import { createCourseWithScorm } from "../services/course-authoring-flow";
+import { createCourseWithScorm, CourseContentError } from "../services/course-authoring-flow";
+import { useToast } from "@/shared/components/ui/toast";
+import type { ApiError } from "@/shared/types";
 import {
   INITIAL_STEP_ONE,
   INITIAL_STEP_TWO,
@@ -19,6 +21,7 @@ import type {
 
 export function useAdminCourses() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const authoringQuery = useAuthoringCourses();
 
   const [activeTab, setActiveTab] = useState<AdminCourseFilter>("all");
@@ -32,6 +35,7 @@ export function useAdminCourses() {
   const [stepTwoData, setStepTwoData] = useState<CreateCourseStepTwoData>(INITIAL_STEP_TWO);
   const [isCreateSuccessOpen, setIsCreateSuccessOpen] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+  const draftCourseIdRef = useRef<string | null>(null);
   const [deleteCourseId, setDeleteCourseId] = useState<string | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleteSuccessOpen, setIsDeleteSuccessOpen] = useState(false);
@@ -70,28 +74,57 @@ export function useAdminCourses() {
       const res = await createCourseWithScorm({
         stepOne: stepOneData,
         stepTwo: stepTwoData,
+        existingCourseId: draftCourseIdRef.current,
       });
+      draftCourseIdRef.current = null;
       setCreatedCourseId(res.id || null);
-      queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-    } catch {
-      setCreatedCourseId(null);
-    } finally {
-      setIsSubmitting(false);
       setIsCreateOpen(false);
       setIsCreateSuccessOpen(true);
+    } catch (err) {
+      // Keep the modal open so the admin can fix the file and retry against the same draft.
+      if (err instanceof CourseContentError) draftCourseIdRef.current = err.courseId;
+      toast({
+        type: "error",
+        title: "Couldn't Create Course",
+        description: (err as ApiError)?.message || "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+      queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
     }
   };
 
   const handlePublishCourse = async (courseId: string) => {
-    await publishCourse(courseId);
-    queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-    queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+    try {
+      await publishCourse(courseId);
+      toast({ type: "success", title: "Course Published", description: "The course is now live in the catalogue." });
+      queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
+      queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+    } catch (err) {
+      const apiError = err as ApiError;
+      toast({
+        type: "error",
+        title: "Couldn't Publish Course",
+        description:
+          apiError?.code === "lms.course.not_publishable"
+            ? "This course has no content yet. Add a module with at least one item (e.g. a SCORM package) before publishing."
+            : apiError?.message || "Something went wrong. Please try again.",
+      });
+    }
   };
 
   const handleUnpublishCourse = async (courseId: string) => {
-    await unpublishCourse(courseId);
-    queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
-    queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+    try {
+      await unpublishCourse(courseId);
+      queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
+      queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+    } catch (err) {
+      toast({
+        type: "error",
+        title: "Couldn't Unpublish Course",
+        description: (err as ApiError)?.message || "Something went wrong. Please try again.",
+      });
+    }
   };
 
   return {
@@ -112,6 +145,7 @@ export function useAdminCourses() {
     stepTwoData,
     setStepTwoData,
     openCreateModal: () => {
+      draftCourseIdRef.current = null;
       setStepOneData(INITIAL_STEP_ONE);
       setStepTwoData(INITIAL_STEP_TWO);
       setCreateStep(1);
