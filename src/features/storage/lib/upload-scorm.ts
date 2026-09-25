@@ -7,62 +7,15 @@ import {
 export type UploadProgressCallback = (percent: number) => void;
 
 /**
- * Uploads payload using chunked streaming transmission to bypass Apache / reverse-proxy
- * request body size and buffer limitations, with real-time byte upload progress reporting.
+ * PUTs the file to the presigned storage URL with byte-level progress reporting.
+ * Uses XHR rather than a streaming fetch body: streamed request bodies need HTTP/2,
+ * and Cloudinary's upload endpoint negotiates HTTP/1.1 (ERR_ALPN_NEGOTIATION_FAILED).
  */
-async function uploadPayloadChunked(
+function uploadPayload(
   uploadUrl: string,
   file: File,
   onProgress?: UploadProgressCallback
 ): Promise<void> {
-  const totalBytes = file.size;
-  let uploadedBytes = 0;
-
-  // 1. Attempt chunked streaming transmission via Fetch API (duplex: "half")
-  // Modern browsers send Transfer-Encoding: chunked when body is a ReadableStream.
-  try {
-    if (typeof ReadableStream !== "undefined" && typeof file.stream === "function") {
-      const stream = file.stream();
-      const progressStream = new TransformStream<Uint8Array, Uint8Array>({
-        transform(chunk, controller) {
-          uploadedBytes += chunk.byteLength;
-          if (onProgress && totalBytes > 0) {
-            const pct = Math.min(99, Math.round((uploadedBytes / totalBytes) * 100));
-            onProgress(pct);
-          }
-          controller.enqueue(chunk);
-        },
-      });
-
-      const chunkedBody = stream.pipeThrough(progressStream);
-
-      const res = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/zip",
-        },
-        body: chunkedBody,
-        // @ts-expect-error duplex is required by the Fetch standard for streaming bodies
-        duplex: "half",
-      });
-
-      if (res.ok) {
-        if (onProgress) onProgress(100);
-        return;
-      }
-
-      console.warn(
-        `Chunked fetch returned status ${res.status}. Falling back to chunked XHR upload...`
-      );
-    }
-  } catch (streamErr) {
-    console.warn(
-      "Fetch stream chunking error or unsupported, falling back to XHR upload:",
-      streamErr
-    );
-  }
-
-  // 2. Fallback to XMLHttpRequest with byte-level progress reporting
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", uploadUrl, true);
@@ -103,9 +56,9 @@ async function uploadPayloadChunked(
 }
 
 /**
- * Uploads a SCORM .zip package to Orchestrator storage using chunked payload submission.
+ * Uploads a SCORM .zip package to Orchestrator storage.
  * 1. Obtains presigned upload URL from Orchestrator (/storage/upload-url).
- * 2. Transmits payload in chunked stream with real-time byte progress reporting.
+ * 2. PUTs the file to that URL with real-time byte progress reporting.
  * 3. Confirms upload with Orchestrator (/storage/confirm).
  */
 export async function uploadScormPackage(
@@ -120,13 +73,13 @@ export async function uploadScormPackage(
       purpose: "lms_scorm_package",
     });
 
-    await uploadPayloadChunked(uploadInfo.uploadUrl, file, onProgress);
+    await uploadPayload(uploadInfo.uploadUrl, file, onProgress);
 
     const confirmed = await confirmUpload({ assetId: uploadInfo.assetId });
     return confirmed.assetId;
   } catch (err) {
     presignedError = err;
-    console.error("Presigned chunked upload failed:", err);
+    console.error("Presigned upload failed:", err);
   }
 
   // Fallback: direct upload through Orchestrator (for smaller packages or if presigned URL is unavailable)
