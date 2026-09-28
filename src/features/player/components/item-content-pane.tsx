@@ -5,7 +5,11 @@ import { FiCheckCircle } from "react-icons/fi";
 import { Button } from "@/shared/components/ui/button";
 import { InlineSpinner } from "@/shared/components/ui/loader";
 import { useToast } from "@/shared/components/ui/toast";
-import { useLaunchItem, useRecordItemProgress, useScormSession } from "@/features/player/hooks";
+import {
+  useLaunchItem,
+  useRecordItemProgress,
+  useScormSession,
+} from "@/features/player/hooks";
 import { ScormPlayer } from "@/features/player/components/scorm-player";
 import { QuizRunner } from "@/features/player/components/quiz-runner";
 import type { CourseOutlineItem } from "@/features/courses/types";
@@ -31,13 +35,15 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [markedComplete, setMarkedComplete] = useState(isCompleted);
 
-  const { mutate: launchItem, isPending: isLaunching } = useLaunchItem(enrollmentId);
-  const { mutate: recordProgress, isPending: isMarking } = useRecordItemProgress(enrollmentId);
-  const { data: scormSession, isLoading: isLoadingSession } = useScormSession(sessionId ?? "");
+  const { mutate: launchItem, isPending: isLaunching } =
+    useLaunchItem(enrollmentId);
+  const { mutate: recordProgress, isPending: isMarking } =
+    useRecordItemProgress(enrollmentId);
+  const { data: scormSession, isLoading: isLoadingSession } = useScormSession(
+    sessionId ?? "",
+  );
 
   useEffect(() => {
-    // Resetting local view state for the newly selected item, not re-derivable during render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLaunchUrl(null);
     setSessionId(null);
     setMarkedComplete(isCompleted);
@@ -60,8 +66,6 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
         });
       },
     });
-    // Re-launch whenever the selected item changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id, item.type]);
 
   const handleMarkComplete = () => {
@@ -70,7 +74,11 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
       {
         onSuccess: () => {
           setMarkedComplete(true);
-          toast({ type: "success", title: "Item Complete", description: "Nice work — moving on." });
+          toast({
+            type: "success",
+            title: "Item Complete",
+            description: "Nice work — moving on.",
+          });
           onProgress();
         },
         onError: (error) => {
@@ -88,12 +96,18 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
             description: error.message || "Please try again.",
           });
         },
-      }
+      },
     );
   };
 
   if (item.type === "quiz") {
-    return <QuizRunner enrollmentId={enrollmentId} itemId={item.id} onProgress={onProgress} />;
+    return (
+      <QuizRunner
+        enrollmentId={enrollmentId}
+        itemId={item.id}
+        onProgress={onProgress}
+      />
+    );
   }
 
   if (item.type === "scorm_package") {
@@ -122,7 +136,11 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
         {item.type === "video" ? (
           <video src={launchUrl} controls className="w-full h-full" />
         ) : (
-          <iframe title={item.title} src={launchUrl} className="w-full h-full min-h-100 border-0" />
+          <iframe
+            title={item.title}
+            src={launchUrl}
+            className="w-full h-full min-h-100 border-0"
+          />
         )}
       </div>
 
@@ -132,7 +150,9 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
         size="md"
         loading={isMarking}
         disabled={markedComplete}
-        leftIcon={markedComplete ? <FiCheckCircle className="w-4 h-4" /> : undefined}
+        leftIcon={
+          markedComplete ? <FiCheckCircle className="w-4 h-4" /> : undefined
+        }
         onClick={handleMarkComplete}
         className="self-start"
       >

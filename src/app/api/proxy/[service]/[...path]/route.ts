@@ -19,9 +19,46 @@ const RESPONSE_HEADERS_TO_DROP = new Set([
   "content-length",
   "transfer-encoding",
   "connection",
+  // Allow the SCORM player HTML to render inside our iframe.
+  "x-frame-options",
+  "content-security-policy",
 ]);
 
-function buildForwardHeaders(source: Headers, accessToken: string | undefined): Headers {
+function rewriteScormPlayerBaseHtml(
+  html: string,
+  requestUrl: string,
+  sessionId: string,
+): string {
+  if (!sessionId || (!html.includes("<html") && !html.includes("<body"))) {
+    return html;
+  }
+
+  const { origin } = new URL(requestUrl);
+  // Base must be the session directory so that `./content/...` resolves to
+  // `/player/scorm/{sessionId}/content/...` and `./cmi` resolves to
+  // `/player/scorm/{sessionId}/cmi`.
+  const proxyBaseHref = `${origin}/api/proxy/lms/player/scorm/${sessionId}/`;
+
+  const normalized = html.replace(
+    /<base\s+[^>]*href\s*=\s*['"][^'"]*['"][^>]*>/i,
+    `<base href="${proxyBaseHref}">`,
+  );
+
+  if (normalized === html && /<\/head>/i.test(html)) {
+    return html.replace(/<\/head>/i, `<base href="${proxyBaseHref}"></head>`);
+  }
+
+  if (normalized === html) {
+    return `<base href="${proxyBaseHref}">${html}`;
+  }
+
+  return normalized;
+}
+
+function buildForwardHeaders(
+  source: Headers,
+  accessToken: string | undefined,
+): Headers {
   const headers = new Headers();
   source.forEach((value, key) => {
     if (!REQUEST_HEADERS_TO_DROP.has(key.toLowerCase())) {
@@ -50,7 +87,7 @@ async function forward(
   request: NextRequest,
   upstreamUrl: string,
   accessToken: string | undefined,
-  body: ArrayBuffer | undefined
+  body: ArrayBuffer | undefined,
 ): Promise<Response> {
   return fetch(upstreamUrl, {
     method: request.method,
@@ -63,14 +100,17 @@ async function forward(
 
 async function handleProxy(
   request: NextRequest,
-  context: { params: Promise<{ service: string; path: string[] }> }
+  context: { params: Promise<{ service: string; path: string[] }> },
 ): Promise<Response> {
   const { service, path } = await context.params;
   const baseUrl = SERVICE_BASE_URLS[service];
   if (!baseUrl) {
     return NextResponse.json(
-      { success: false, error: { code: "not_found", message: "Unknown upstream service" } },
-      { status: 404 }
+      {
+        success: false,
+        error: { code: "not_found", message: "Unknown upstream service" },
+      },
+      { status: 404 },
     );
   }
 
@@ -83,7 +123,12 @@ async function handleProxy(
 
   let session: SessionPayload | null = await getSession();
 
-  let upstreamRes = await forward(request, upstreamUrl, session?.accessToken, body);
+  let upstreamRes = await forward(
+    request,
+    upstreamUrl,
+    session?.accessToken,
+    body,
+  );
 
   // A logged-out visitor has no refresh token to retry with — pass the 401 through as-is.
   if (upstreamRes.status === 401 && session?.refreshToken) {
@@ -91,8 +136,31 @@ async function handleProxy(
     if (refreshed) {
       await setSessionCookie(refreshed);
       session = refreshed;
-      upstreamRes = await forward(request, upstreamUrl, session.accessToken, body);
+      upstreamRes = await forward(
+        request,
+        upstreamUrl,
+        session.accessToken,
+        body,
+      );
     }
+  }
+
+  const isScormPlayerHtml =
+    service === "lms" &&
+    path[0] === "player" &&
+    path[1] === "scorm" &&
+    path.at(-1) === "player" &&
+    (upstreamRes.headers.get("content-type") ?? "").includes("text/html");
+
+  if (isScormPlayerHtml) {
+    const html = await upstreamRes.text();
+    const sessionId = path[2];
+    const rewritten = rewriteScormPlayerBaseHtml(html, request.url, sessionId);
+
+    return new NextResponse(rewritten, {
+      status: upstreamRes.status,
+      headers: buildResponseHeaders(upstreamRes.headers),
+    });
   }
 
   return new NextResponse(upstreamRes.body, {

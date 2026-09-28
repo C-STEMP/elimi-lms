@@ -3,10 +3,10 @@ import type { ItemType } from "@/shared/types";
 export type ItemLaunch = {
   itemId: string;
   type: ItemType;
-  /** Native content URL, or an LMS SCORM player URL for scorm_package items. */
   launchUrl?: string;
-  /** Set for scorm_package launches. */
   sessionId?: string | null;
+  playerUrl?: string;
+  contentBaseUrl?: string;
 };
 
 export type ItemProgressWrite = {
@@ -25,7 +25,6 @@ export type ScormCmiCommit = {
   location?: string;
 };
 
-/** Last-committed CMI snapshot, same shape as a commit. */
 export type ScormCmiSnapshot = ScormCmiCommit;
 
 export type ScormSession = {
@@ -35,10 +34,8 @@ export type ScormSession = {
   packageAssetId?: string;
   scoHref?: string | null;
   launchUrl: string;
-  /**
-   * Present once the learner has made at least one `POST .../cmi` commit.
-   * Omitted on a first-ever launch so the player initializes cold.
-   */
+  playerUrl?: string;
+  contentBaseUrl?: string;
   cmi?: ScormCmiSnapshot;
 };
 

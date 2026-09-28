@@ -29,27 +29,8 @@ export type ScormPlayerProps = {
   learnerName: string;
 };
 
-/**
- * Hosts a SCORM 1.2 SCO in an iframe and exposes `window.API` for it to call.
- *
- * A SCO finds the API by walking `window` then `window.parent`/`window.opener`
- * looking for an object with `LMSInitialize`. That walk only crosses the
- * iframe boundary if the iframe is same-origin with this page — if the LMS
- * player serves extracted packages from a different host than the frontend,
- * this needs a same-origin proxy (e.g. a Next.js rewrite) in front of the
- * player URL, or the SCO's API discovery will fail silently.
- */
-function toProxiedUrl(url: string): string {
-  if (typeof window === "undefined" || !url) return url;
-  try {
-    const target = new URL(url, window.location.href);
-    if (target.origin !== window.location.origin) {
-      return `/scorm-proxy${target.pathname}${target.search}${target.hash}`;
-    }
-  } catch {
-    // Keep original URL if parsing fails
-  }
-  return url;
+function buildPlayerSrc(session: ScormSession): string {
+  return `/api/proxy/lms/player/scorm/${session.sessionId}/player`;
 }
 
 export function ScormPlayer({
@@ -90,16 +71,17 @@ export function ScormPlayer({
       delete window.API;
       runtimeRef.current = null;
     };
-    // Re-running for a new session (new sessionId) is intentional.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.sessionId]);
+
+  const src = buildPlayerSrc(session);
 
   return (
     <iframe
+      key={session.sessionId}
       title="SCORM content"
-      src={toProxiedUrl(session.launchUrl)}
-      className="h-full w-full border-0"
-      allow="fullscreen"
+      src={src}
+      className="h-full w-full min-h-150 border-0 rounded-xl"
+      allow="fullscreen; autoplay"
     />
   );
 }
