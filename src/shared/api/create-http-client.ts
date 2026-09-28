@@ -4,6 +4,7 @@ import type { ApiError, ApiErrorEnvelope } from "@/shared/types";
 export function createHttpClient(baseURL: string) {
   const client = axios.create({
     baseURL,
+    withCredentials: true,
     headers: {
       "Content-Type": "application/json",
     },

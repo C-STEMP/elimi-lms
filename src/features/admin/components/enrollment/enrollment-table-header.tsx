@@ -5,7 +5,6 @@ export const EnrollmentTableHeader: React.FC = () => {
     <thead>
       <tr className="bg-input-bg/60 border-b border-gray-100 text-left text-xs font-semibold text-neutral-primary select-none">
         <th className="py-3.5 px-4">Date</th>
-        <th className="py-3.5 px-4">Organization&apos;s Name</th>
         <th className="py-3.5 px-4">Email</th>
         <th className="py-3.5 px-4">No. Of Students</th>
         <th className="py-3.5 px-4">Slots Available</th>

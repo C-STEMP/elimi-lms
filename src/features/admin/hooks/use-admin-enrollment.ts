@@ -1,11 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAdminEnrollments, useGrantEntitlement } from "@/features/staff/hooks";
+import {
+  useAdminEnrollments,
+  useGrantEntitlement,
+} from "@/features/staff/hooks";
 import {
   INITIAL_ENROLL_LEARNERS_FORM,
   INITIAL_EXPORT_DATA_FORM,
 } from "../constants/enrollment-data";
+import {
+  cleanCourseTitle,
+  formatLearnerEmail,
+  formatLearnerName,
+} from "../lib/learner-format";
 import type {
   AdminEnrollmentItem,
   EnrollLearnersFormData,
@@ -30,23 +38,57 @@ export function useAdminEnrollment() {
   const [isExportSuccessOpen, setIsExportSuccessOpen] = useState(false);
   const [exportForm, setExportForm] = useState<ExportDataFormData>(INITIAL_EXPORT_DATA_FORM);
 
-  const mappedEnrollments: AdminEnrollmentItem[] = useMemo(() => {
-    return (enrollmentsQuery.data?.data ?? []).map((e) => ({
-      id: e.id,
-      date: e.createdAt ? new Date(e.createdAt).toLocaleDateString("en-GB") : "22/07/2026",
-      organizationName: e.entitlement?.sponsorNote || "General Enrollment",
-      email: e.learnerLmsUserId.includes("@") ? e.learnerLmsUserId : `${e.learnerLmsUserId}@elimi.edu`,
-      numberOfStudents: 1,
-      slotsAvailable: 1,
-      course: e.courseTitle || e.courseId,
-    }));
+  const rawEnrollments = useMemo(() => {
+    const d = enrollmentsQuery.data as any;
+    if (!d) return [];
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d.data)) return d.data;
+    if (Array.isArray(d.items)) return d.items;
+    return [];
   }, [enrollmentsQuery.data]);
+
+  const mappedEnrollments: AdminEnrollmentItem[] = useMemo(() => {
+    return rawEnrollments.map((e: any) => {
+      const course = cleanCourseTitle(e.courseTitle, e.course?.title);
+
+      const organizationName =
+        e.entitlement?.sponsorNote && e.entitlement.sponsorNote.trim()
+          ? e.entitlement.sponsorNote.trim()
+          : e.learnerName && e.learnerName.trim()
+          ? e.learnerName.trim()
+          : e.learner?.name && e.learner.name.trim()
+          ? e.learner.name.trim()
+          : formatLearnerName(e.learnerLmsUserId);
+
+      const email =
+        e.learnerEmail && e.learnerEmail.trim()
+          ? e.learnerEmail.trim()
+          : e.learner?.email && e.learner.email.trim()
+          ? e.learner.email.trim()
+          : formatLearnerEmail(e.learnerLmsUserId);
+
+      return {
+        id: e.id,
+        date: e.createdAt
+          ? new Date(e.createdAt).toLocaleDateString("en-GB")
+          : "22/07/2026",
+        organizationName,
+        email,
+        numberOfStudents: 1,
+        slotsAvailable: 1,
+        course,
+      };
+    });
+  }, [rawEnrollments]);
 
   const filteredEnrollments = useMemo(() => {
     if (!searchQuery.trim()) return mappedEnrollments;
     const q = searchQuery.toLowerCase();
     return mappedEnrollments.filter(
-      (e) => e.organizationName.toLowerCase().includes(q) || e.email.toLowerCase().includes(q) || e.course.toLowerCase().includes(q)
+      (e) =>
+        e.email.toLowerCase().includes(q) ||
+        e.course.toLowerCase().includes(q) ||
+        (e.organizationName && e.organizationName.toLowerCase().includes(q))
     );
   }, [mappedEnrollments, searchQuery]);
 

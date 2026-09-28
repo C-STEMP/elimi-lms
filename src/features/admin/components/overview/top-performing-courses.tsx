@@ -10,7 +10,7 @@ export const TopPerformingCourses: React.FC<TopPerformingCoursesProps> = ({
   courses = [],
 }) => {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-2xs border border-gray-100 flex flex-col justify-between select-none h-full min-h-75">
+    <div className="bg-white rounded-2xl p-5 shadow-2xs border border-gray-100 flex flex-col select-none h-full min-h-75">
       <h2 className="text-base sm:text-lg font-bold text-neutral-primary tracking-tight mb-4">
         Top Performing Courses
       </h2>
@@ -28,7 +28,7 @@ export const TopPerformingCourses: React.FC<TopPerformingCoursesProps> = ({
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5 flex-1 justify-between">
+        <div className="flex flex-col gap-2.5">
           {courses.map((course, idx) => (
             <div
               key={`${course.id}-${idx}`}

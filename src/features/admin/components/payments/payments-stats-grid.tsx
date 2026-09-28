@@ -2,16 +2,22 @@ import React from "react";
 import { LuWallet, LuPlus } from "react-icons/lu";
 import { PAYMENT_REVENUE_STATS } from "../../constants/payments-data";
 
+import type { PaymentRevenueStat } from "../../types/payments";
+
 export interface PaymentsStatsGridProps {
   onTopupWallet: () => void;
+  stats?: PaymentRevenueStat[];
+  isLoading?: boolean;
 }
 
 export const PaymentsStatsGrid: React.FC<PaymentsStatsGridProps> = ({
   onTopupWallet,
+  stats = PAYMENT_REVENUE_STATS,
+  isLoading = false,
 }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 select-none">
-      {PAYMENT_REVENUE_STATS.map((stat) => (
+      {stats.map((stat) => (
         <div
           key={stat.title}
           className="bg-white rounded-2xl border border-gray-100 p-4 shadow-2xs flex flex-col justify-between"
@@ -24,7 +30,11 @@ export const PaymentsStatsGrid: React.FC<PaymentsStatsGridProps> = ({
               <LuWallet className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-neutral-primary">{stat.amount}</p>
+          {isLoading ? (
+            <div className="h-7 w-28 bg-gray-100 animate-pulse rounded-md" />
+          ) : (
+            <p className="text-xl font-bold text-neutral-primary">{stat.amount}</p>
+          )}
         </div>
       ))}
 

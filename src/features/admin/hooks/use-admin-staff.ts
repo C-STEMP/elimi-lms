@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCreateStaffInvite, useStaffMembers } from "@/features/staff/hooks";
 import { INITIAL_ADD_STAFF_FORM } from "../constants/staff-data";
 import type { AddStaffFormData, AdminStaffItem, StaffViewMode } from "../types/staff";
@@ -8,6 +8,17 @@ import type { AddStaffFormData, AdminStaffItem, StaffViewMode } from "../types/s
 export function useAdminStaff() {
   const staffQuery = useStaffMembers();
   const inviteMutation = useCreateStaffInvite();
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      if (staffQuery.data) {
+        console.log("[Admin Staff] Response:", staffQuery.data);
+      }
+      if (staffQuery.error) {
+        console.warn("[Admin Staff] Error:", staffQuery.error);
+      }
+    }
+  }, [staffQuery.data, staffQuery.error]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<StaffViewMode>("list");

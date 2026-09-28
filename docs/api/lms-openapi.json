@@ -3,7 +3,7 @@
   "info": {
     "title": "LMS Service API",
     "version": "1.0.0",
-    "description": "REST surface exposed to clients by the LMS (Learning Management System)\nservice. Vocational training for artisans: catalogue, native + SCORM 1.2\nauthoring, entitlements, progress/sequencing, native assessments, and\nLMS-owned completion certificates.\n\n**Shared conventions** (identical to Orchestrator / CAP, defined locally\nhere since the specs aren't composed): SuccessEnvelope / ErrorEnvelope\n(§19), cursor pagination (§19), Money as\n`{ amountMinorUnits: string, currency: string }` (§21). List endpoints\nput the array on `data` directly (`{ success, data: [...], meta? }`) —\nnever wrap as `data.items`.\n\n**Not in this document, deliberately:**\n- Authentication, Address (countries/states/LGAs), Storage, and\n  Notifications live on Orchestrator — see `orchestrator-openapi.yaml`.\n  LMS persists Orchestrator `assetId` values only (SCORM zip, media,\n  certificate PDF). SCORM *playback* is served by LMS player URLs, not\n  Cloudinary delivery URLs.\n- Payment **processing** is Orchestrator `InitiatePayment` gRPC. LMS\n  **prices** and exposes checkout (`POST /enrollments/{id}/checkout`).\n- CAP recommendations are **gRPC** (`lms.v1.RecommendationsService`) —\n  not public REST. On course completion LMS emits `lms.course.completed`\n  (independent of CAP certificates).\n\n**Personas:** multi-role on one Orchestrator account. Each persona\n(learner / instructor / staff) must complete LMS onboarding before that\npersona's surface is unlocked. Instructors are platform-invite only.\nStaff capabilities are a superset of instructor capabilities (broader\nscope). Course `owner` + co-instructors may edit; owner and platform\nstaff may publish.\n",
+    "description": "REST surface exposed to clients by the LMS (Learning Management System)\nservice. Vocational training for artisans: catalogue, native + SCORM 1.2\nauthoring, entitlements, progress/sequencing, native assessments, and\nLMS-owned completion certificates.\n\n**Shared conventions** (identical to Orchestrator / CAP, defined locally\nhere since the specs aren't composed): SuccessEnvelope / ErrorEnvelope\n(§19), cursor pagination (§19), Money as\n`{ amountMinorUnits: string, currency: string }` (§21). List endpoints\nput the array on `data` directly (`{ success, data: [...], meta? }`) —\nnever wrap as `data.items`.\n\n**Not in this document, deliberately:**\n- Authentication, Address (countries/states/LGAs), Storage, and\n  Notifications live on Orchestrator — see `orchestrator-openapi.yaml`.\n  LMS persists Orchestrator `assetId` values only (SCORM zip, media,\n  certificate PDF). SCORM *playback* is served by LMS player URLs, not\n  Cloudinary delivery URLs.\n- Payment **processing** is Orchestrator `InitiatePayment` gRPC. LMS\n  **prices** and exposes checkout (`POST /enrollments/{id}/checkout`\n  and `POST /level-enrollments/{id}/checkout`).\n- CAP recommendations are **gRPC** (`lms.v1.RecommendationsService`) —\n  not public REST. On course completion LMS emits `lms.course.completed`\n  (independent of CAP certificates).\n\n**Personas:** multi-role on one Orchestrator account. Each persona\n(learner / instructor / staff) must complete LMS onboarding before that\npersona's surface is unlocked. Instructors are platform-invite only.\nStaff capabilities are a superset of instructor capabilities (broader\nscope). Course `owner` + co-instructors may edit; owner and platform\nstaff may publish.\n",
     "license": {
       "name": "UNLICENSED"
     }
@@ -30,7 +30,7 @@
   "tags": [
     {
       "name": "Me",
-      "description": "Current LMS user, personas, onboarding gates, capabilities."
+      "description": "Current LMS user, personas, onboarding gates, capabilities, and personal profile photo."
     },
     {
       "name": "Onboarding",
@@ -54,7 +54,7 @@
     },
     {
       "name": "Player",
-      "description": "Progress, sequencing locks, native launch, SCORM runtime session + CMI."
+      "description": "Progress, sequencing locks, native launch, SCORM session JSON, LMS-hosted player HTML, package files, and CMI."
     },
     {
       "name": "Assessments",
@@ -66,7 +66,19 @@
     },
     {
       "name": "Staff",
-      "description": "Staff invites, roles, admin grants, cross-course admin lists."
+      "description": "Staff invites, roles, directory person fields, admin grants, cross-course lists, payments ledger, year-filtered dashboard, platform settings."
+    },
+    {
+      "name": "LevelOfferings",
+      "description": "QualificationLevel SKU — published catalogue, staff authoring, and fan-out enroll that creates per-course entitlements under one payment."
+    },
+    {
+      "name": "Learners",
+      "description": "Staff learner directory, invite, LMS-only suspend, bulk enroll, and Orchestrator organization proxy."
+    },
+    {
+      "name": "SeatAllocations",
+      "description": "Sponsored cohorts — leftover seats, CSV or pre-parsed learner rows, organization_seat grants."
     }
   ],
   "paths": {
@@ -109,6 +121,88 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/me/profile": {
+      "get": {
+        "operationId": "getMeProfile",
+        "tags": [
+          "Me"
+        ],
+        "summary": "Personal profile (name, email, resolved photo)",
+        "description": "Person-level fields on `LmsUser`. `photoAssetId` is an Orchestrator storage id (upload via OL `/storage/upload` first); `photo` is the resolved display URL (null if resolve missed). Same pattern as CAP `GET /me/profile`.",
+        "responses": {
+          "200": {
+            "description": "Personal profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LmsMeProfile"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchMeProfile",
+        "tags": [
+          "Me"
+        ],
+        "summary": "Update display name and/or profile photo",
+        "description": "Merge-patch. `photoAssetId` is the Orchestrator storage id; null clears the photo. Email is read-only (from OL / `LmsUser.email`).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LmsMeProfilePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated personal profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LmsMeProfile"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -433,6 +527,13 @@
             }
           },
           {
+            "name": "qualificationLevelId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "unitId",
             "in": "query",
             "schema": {
@@ -573,6 +674,34 @@
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/CourseStatus"
+            }
+          },
+          {
+            "name": "sectorId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tradeId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "qualificationLevelId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "unitId",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1726,7 +1855,7 @@
           "Staff"
         ],
         "summary": "Grant access (admin_grant, sponsor, or cap_recommendation)",
-        "description": "Creates/activates entitlement + enrollment without learner checkout. `sponsor` is \"someone paid\" (optional sponsorUserId / note). Organizations are out of LMS v1 (later on Orchestrator).",
+        "description": "Creates/activates entitlement + enrollment without learner checkout. `sponsor` is \"someone paid\" (optional sponsorUserId / note). Organization-sponsored access uses `organization_seat` via `/admin/learners/{id}/enrollments` or seat allocations. Orchestrator owns Organization CRUD; LMS `/admin/organizations` is a staff proxy.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1833,7 +1962,7 @@
           "Player"
         ],
         "summary": "Launch an item (native body URL or SCORM player session)",
-        "description": "Requires active entitlement. Sequenced items that are locked return 409 with error.code `lms.sequencing.locked`. SCORM launchUrl is an LMS player URL (extracted package), not a Cloudinary URL.",
+        "description": "Requires active entitlement. Sequenced items that are locked return 409 with error.code `lms.sequencing.locked`. SCORM launchUrl is `{LMS_PUBLIC_BASE_URL}/player/scorm/{sessionId}` (JSON session + CMI, not a Cloudinary zip and not an HTML SCO). Clients call that URL on the same API host they used for launch.",
         "parameters": [
           {
             "$ref": "#/components/parameters/EnrollmentIdPath"
@@ -2046,6 +2175,85 @@
                 }
               }
             }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/player/scorm/{sessionId}/player": {
+      "get": {
+        "operationId": "getScormPlayer",
+        "tags": [
+          "Player"
+        ],
+        "summary": "LMS-hosted SCORM 1.2 player HTML (iframe this)",
+        "description": "HTML shell that sets `window.API` and iframes `{scoHref}` from `…/content/`. Auth is Bearer **or** a session-scoped content token (`ct` query, `lms_scorm_ct` cookie, or `X-Elimi-Scorm-Token`). Sets the content cookie on success. Not a JSON envelope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player HTML.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/player/scorm/{sessionId}/content/{path}": {
+      "get": {
+        "operationId": "getScormContent",
+        "tags": [
+          "Player"
+        ],
+        "summary": "File from the extracted SCORM package",
+        "description": "Serves a file under the session extract dir (path jail). Auth is Bearer or the same content token as the player. Empty path redirects to `scoHref`. Not a JSON envelope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SessionIdPath"
+          },
+          {
+            "$ref": "#/components/parameters/ScormContentPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Package file.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect to scoHref when path is empty."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/OutOfScope"
@@ -2564,6 +2772,7 @@
           "Staff"
         ],
         "summary": "List staff memberships (admin)",
+        "description": "Each row includes person fields (`displayName`, `email`, `photoAssetId`, resolved `photo`) the same way CAP populates people lists from onboarding / `CapUser.photoAssetId`. Name falls back to `LmsUser.displayName` then the email local-part.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Cursor"
@@ -2748,6 +2957,1475 @@
           }
         }
       }
+    },
+    "/admin/payments/summary": {
+      "get": {
+        "operationId": "getAdminPaymentsSummary",
+        "tags": [
+          "Staff"
+        ],
+        "summary": "LMS payments overview cards — payments.read",
+        "description": "totalRevenue is the sum of completed checkout amounts (course self-pay entitlements with no parent level enrollment, plus level-enrollment checkouts). pendingCount / completedCount are checkout statuses. Failed checkouts are excluded from all three cards. Staff-granted access (admin_grant, sponsor, organization_seat, cap_recommendation) is not a checkout and is omitted. Requires `payments.read`.",
+        "responses": {
+          "200": {
+            "description": "Payments overview cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AdminPaymentsSummary"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          }
+        }
+      }
+    },
+    "/admin/payments": {
+      "get": {
+        "operationId": "getAdminPayments",
+        "tags": [
+          "Staff"
+        ],
+        "summary": "LMS checkout history — payments.read",
+        "description": "Union of course self-pay entitlements and level-enrollment checkouts. Child LEVEL_OFFERING entitlements are omitted (same paymentId as the parent level enrollment). Failed rows are included and filterable. Requires `payments.read`.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Learner name search."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CheckoutPaymentStatus"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "paidAt",
+                "initiatedAt"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated checkout rows.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminPaymentListItem"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          }
+        }
+      }
+    },
+    "/admin/payments/{id}/receipt": {
+      "get": {
+        "operationId": "getAdminPaymentReceipt",
+        "tags": [
+          "Staff"
+        ],
+        "summary": "LMS payment receipt snapshot — payments.read",
+        "description": "JSON snapshot for the admin receipt modal. 404 until checkout is completed. No PDF / assetId in v1. `{id}` is the entitlement id (course) or level-enrollment id (level). Requires `payments.read`.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentRowIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Receipt snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AdminPaymentReceipt"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/dashboard": {
+      "get": {
+        "operationId": "getAdminDashboard",
+        "tags": [
+          "Staff"
+        ],
+        "summary": "LMS admin overview — KPIs and UTC-year charts",
+        "description": "Shared filter `year` (UTC calendar year, default current UTC year). Every KPI and chart uses that window. Top courses/units and top levels rank by enrollment volume (createdAt in year). Gender uses the same LearnerProfile cohort as totalLearners. Requires `analytics.read`.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "description": "UTC calendar year. Defaults to the current UTC year."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard payload for staff admin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AdminDashboard"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          }
+        }
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "operationId": "getAdminSettings",
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Platform settings for the LMS Settings screen",
+        "description": "Singleton contact + legal documents (terms, privacy, refund). Each legal section is either typed `content` or a PDF (`documentAssetId` from OL `/storage/upload`, purpose `lms_legal_pdf`). Requires `settings.read`.",
+        "responses": {
+          "200": {
+            "description": "Current settings (empty defaults when never saved).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LmsSettings"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchAdminSettings",
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Save contact info and legal documents",
+        "description": "Merge-patch for the Settings Save button. Each legal section accepts either `content` or `documentAssetId` (not both). PDF must be uploaded to Orchestrator first. Requires `settings.write`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LmsSettingsPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LmsSettings"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/admin/learners": {
+      "get": {
+        "operationId": "getAdminLearners",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Learner directory (search, sort, latest first)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "name",
+                "email",
+                "coursesTaken",
+                "completionRate"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "organizationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "suspended"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Learners page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LearnerRow"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/learners/export": {
+      "get": {
+        "operationId": "getAdminLearnersExport",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Export learners CSV (optional email dispatch)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "name",
+                "email",
+                "coursesTaken",
+                "completionRate"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "organizationId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "suspended"
+              ]
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV of learner directory columns (no actions).",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/learners/invites": {
+      "post": {
+        "operationId": "postAdminLearnerInvites",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Invite learners by email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearnerInviteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Per-email invite results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LearnerInviteResult"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/learners/{lmsUserId}": {
+      "patch": {
+        "operationId": "patchAdminLearner",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Suspend or restore a learner (LMS-local)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LmsUserIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearnerPatchBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated learner row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LearnerRow"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/learners/{lmsUserId}/enrollments": {
+      "post": {
+        "operationId": "postAdminLearnerEnrollments",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Admin grant courses and/or level offerings",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LmsUserIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearnerEnrollBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-item grant results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LearnerEnrollResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/organizations": {
+      "get": {
+        "operationId": "getAdminOrganizations",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Proxy Orchestrator organizations for pickers",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organizations page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Organization"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postAdminOrganizations",
+        "tags": [
+          "Learners"
+        ],
+        "summary": "Create an organization on Orchestrator",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Organization"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/seat-allocations": {
+      "get": {
+        "operationId": "getAdminSeatAllocations",
+        "tags": [
+          "SeatAllocations"
+        ],
+        "summary": "Sponsored cohorts (latest first)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Seat allocations page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/SeatAllocation"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postAdminSeatAllocations",
+        "tags": [
+          "SeatAllocations"
+        ],
+        "summary": "Create a sponsored cohort and seat learners",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeatAllocationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Allocation plus per-email results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SeatAllocationWriteResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/seat-allocations/import-template": {
+      "get": {
+        "operationId": "getAdminSeatAllocationsImportTemplate",
+        "tags": [
+          "SeatAllocations"
+        ],
+        "summary": "Download CSV header template (email,name)",
+        "responses": {
+          "200": {
+            "description": "Empty template.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/seat-allocations/{allocationId}": {
+      "get": {
+        "operationId": "getAdminSeatAllocation",
+        "tags": [
+          "SeatAllocations"
+        ],
+        "summary": "Seat allocation detail",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AllocationIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Allocation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SeatAllocation"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/seat-allocations/{allocationId}/seats": {
+      "post": {
+        "operationId": "postAdminSeatAllocationSeats",
+        "tags": [
+          "SeatAllocations"
+        ],
+        "summary": "Add learners onto leftover seats",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AllocationIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeatAllocationAddSeats"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Allocation plus per-email results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SeatAllocationWriteResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/level-offerings": {
+      "get": {
+        "operationId": "getLevelOfferings",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Published level offerings (authenticated catalogue)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "qualificationLevelId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published offerings page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LevelOffering"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/level-offerings/{offeringId}": {
+      "get": {
+        "operationId": "getLevelOffering",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Published offering with members and alreadyOwned course ids",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OfferingIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Offering detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelOfferingDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/authoring/level-offerings": {
+      "get": {
+        "operationId": "getAuthoringLevelOfferings",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Staff list of level offerings (any status)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/LevelOfferingStatus"
+            }
+          },
+          {
+            "name": "qualificationLevelId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authoring offerings page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LevelOffering"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          }
+        }
+      },
+      "post": {
+        "operationId": "postAuthoringLevelOfferings",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Create a draft level offering",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelOfferingCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelOfferingDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/OutOfScope"
+          }
+        }
+      }
+    },
+    "/authoring/level-offerings/{offeringId}": {
+      "get": {
+        "operationId": "getAuthoringLevelOffering",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Authoring offering detail",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OfferingIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Offering.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelOfferingDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchAuthoringLevelOffering",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Update title, price, or member courses",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OfferingIdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelOfferingWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelOfferingDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/authoring/level-offerings/{offeringId}/publish": {
+      "post": {
+        "operationId": "postAuthoringLevelOfferingPublish",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Publish (members must be published with unitId; one published per CAP level)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OfferingIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelOfferingDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/authoring/level-offerings/{offeringId}/unpublish": {
+      "post": {
+        "operationId": "postAuthoringLevelOfferingUnpublish",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Unpublish back to draft",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OfferingIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unpublished.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelOfferingDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/level-offerings/{offeringId}/enrollments": {
+      "post": {
+        "operationId": "postLevelOfferingEnrollments",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Enroll remaining members (free activates; priced stays pending)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OfferingIdPath"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Parent level enrollment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LevelEnrollment"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/level-enrollments/{levelEnrollmentId}/checkout": {
+      "post": {
+        "operationId": "postLevelEnrollmentCheckout",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Initiate payment for a pending level enrollment",
+        "description": "Client never supplies amount. referenceType is `lms_level_enrollment`. In-flight unpaid checkout keeps the issued amount.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LevelEnrollmentIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Redirect client to checkoutUrl.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CheckoutResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/level-enrollments/mine": {
+      "get": {
+        "operationId": "getLevelEnrollmentsMine",
+        "tags": [
+          "LevelOfferings"
+        ],
+        "summary": "Current learner's level enrollments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/LevelEnrollmentStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Level enrollments page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LevelEnrollment"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2799,6 +4477,38 @@
           "type": "string"
         }
       },
+      "OfferingIdPath": {
+        "name": "offeringId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "LevelEnrollmentIdPath": {
+        "name": "levelEnrollmentId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "LmsUserIdPath": {
+        "name": "lmsUserId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "AllocationIdPath": {
+        "name": "allocationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
       "SessionIdPath": {
         "name": "sessionId",
         "in": "path",
@@ -2807,6 +4517,17 @@
           "type": "string"
         }
       },
+      "ScormContentPath": {
+        "name": "path",
+        "in": "path",
+        "required": true,
+        "description": "File path inside the extracted package (relative to imsmanifest.xml).",
+        "schema": {
+          "type": "string"
+        },
+        "style": "simple",
+        "explode": false
+      },
       "AttemptIdPath": {
         "name": "attemptId",
         "in": "path",
@@ -2814,6 +4535,15 @@
         "schema": {
           "type": "string"
         }
+      },
+      "PaymentRowIdPath": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Entitlement id (course self-pay) or level-enrollment id."
       },
       "CertificateIdPath": {
         "name": "certificateId",
@@ -2889,8 +4619,28 @@
           }
         }
       },
+      "Unauthorized": {
+        "description": "Missing or invalid Bearer / SCORM content token.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
       "OutOfScope": {
         "description": "Layer 2 — role could attempt this action type, but this instance is outside the actor's scope. error.code is `auth.out_of_scope`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "State conflict (already published, already enrolled, nothing remaining).",
         "content": {
           "application/json": {
             "schema": {
@@ -3048,14 +4798,35 @@
           "withdrawn"
         ]
       },
+      "LevelOfferingStatus": {
+        "type": "string",
+        "description": "String + CHECK.",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ]
+      },
+      "LevelEnrollmentStatus": {
+        "type": "string",
+        "description": "String + CHECK.",
+        "enum": [
+          "pending",
+          "active",
+          "expired",
+          "withdrawn"
+        ]
+      },
       "EntitlementSource": {
         "type": "string",
-        "description": "Why the learner may access. v1 closed set; organization_seat later when orgs live on Orchestrator.",
+        "description": "Why the learner may access. `organization_seat` is granted from a sponsored cohort or staff-sponsored enroll.",
         "enum": [
           "self_pay",
           "admin_grant",
           "cap_recommendation",
-          "sponsor"
+          "sponsor",
+          "level_offering",
+          "organization_seat"
         ]
       },
       "EntitlementStatus": {
@@ -3389,9 +5160,90 @@
           }
         }
       },
+      "ResolvedAsset": {
+        "type": "object",
+        "required": [
+          "assetId"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Resolved for display. Null if the asset is missing or resolve failed."
+          }
+        }
+      },
+      "LmsMeProfile": {
+        "type": "object",
+        "required": [
+          "lmsUserId",
+          "email",
+          "displayName",
+          "photoAssetId",
+          "photo"
+        ],
+        "properties": {
+          "lmsUserId": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoAssetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photo": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedAsset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "LmsMeProfilePatch": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoAssetId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Orchestrator storage id; null clears."
+          }
+        }
+      },
       "CapLinkage": {
         "type": "object",
-        "description": "Optional catalogue link for CAP gap-training recommendations.",
+        "description": "Optional catalogue link for CAP gap-training recommendations. One LMS course maps to at most one CAP unit. All fields are optional on write. When `unitId` is provided, the server resolves and overwrites `sectorId`, `tradeId`, and `qualificationLevelId` from CAP (unit is the most specific id). Requires CAP_MODE=http in production; mock mode keeps client-provided ancestors when the unit is unknown.\n",
         "properties": {
           "sectorId": {
             "type": [
@@ -3405,11 +5257,17 @@
               "null"
             ]
           },
-          "unitIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "qualificationLevelId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unitId": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -3962,6 +5820,20 @@
               "null"
             ]
           },
+          "amount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              }
+            ],
+            "description": "Amount snapshotted at enroll/checkout — not the live course price."
+          },
+          "priceRevisionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "validFrom": {
             "type": [
               "string",
@@ -4187,7 +6059,7 @@
           "launchUrl": {
             "type": "string",
             "format": "uri",
-            "description": "Native content URL or LMS SCORM player URL."
+            "description": "Native content URL, or LMS SCORM session URL (`{LMS_PUBLIC_BASE_URL}/player/scorm/{sessionId}`). Not a Cloudinary URL. GET that path for session JSON (`scoHref`, CMI); POST `…/cmi` to commit."
           },
           "sessionId": {
             "type": [
@@ -4195,6 +6067,16 @@
               "null"
             ],
             "description": "Set for scorm_package launches."
+          },
+          "playerUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "LMS-hosted SCORM 1.2 player HTML. Client iframes this URL (includes a short-lived `ct` query token). Not a Cloudinary URL."
+          },
+          "contentBaseUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Package file root (`…/content/{scoHref}`)."
           }
         }
       },
@@ -4204,7 +6086,9 @@
           "sessionId",
           "enrollmentId",
           "itemId",
-          "launchUrl"
+          "launchUrl",
+          "playerUrl",
+          "contentBaseUrl"
         ],
         "properties": {
           "sessionId": {
@@ -4227,11 +6111,68 @@
           },
           "launchUrl": {
             "type": "string",
-            "format": "uri"
+            "format": "uri",
+            "description": "Same SCORM session URL as ItemLaunch (`LMS_PUBLIC_BASE_URL` + `/player/scorm/{sessionId}`)."
+          },
+          "playerUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "LMS-hosted player HTML (`…/player?ct=`). Iframe this."
+          },
+          "contentBaseUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Extracted package files (`…/content`)."
+          },
+          "cmi": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScormCmiSnapshot"
+              }
+            ],
+            "description": "Last-committed CMI snapshot, present once the learner has made at least one `POST .../cmi` commit. Omitted on a first-ever launch so the player initializes cold; a SCORM API adapter should seed cmi.core.lesson_status / cmi.suspend_data / cmi.core.lesson_location from this on LMSInitialize to resume instead of restarting."
           }
         }
       },
       "ScormCmiCommit": {
+        "type": "object",
+        "required": [
+          "lessonStatus"
+        ],
+        "properties": {
+          "lessonStatus": {
+            "type": "string",
+            "enum": [
+              "incomplete",
+              "completed",
+              "passed",
+              "failed"
+            ]
+          },
+          "scoreRaw": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "scoreMax": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sessionTime": {
+            "type": "string"
+          },
+          "suspendData": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        }
+      },
+      "ScormCmiSnapshot": {
         "type": "object",
         "required": [
           "lessonStatus"
@@ -4425,19 +6366,47 @@
         "type": "object",
         "required": [
           "lmsUserId",
+          "displayName",
+          "email",
+          "photoAssetId",
+          "photo",
           "role",
-          "status"
+          "status",
+          "createdAt"
         ],
         "properties": {
           "lmsUserId": {
             "type": "string"
           },
           "displayName": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Onboarding first+last, else LmsUser.displayName, else email local-part."
           },
           "email": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "email"
+          },
+          "photoAssetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photo": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedAsset"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "role": {
             "$ref": "#/components/schemas/StaffRole"
@@ -4452,6 +6421,1227 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "LevelOfferingItem": {
+        "type": "object",
+        "required": [
+          "courseId",
+          "unitId",
+          "price"
+        ],
+        "properties": {
+          "courseId": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "unitId": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          }
+        }
+      },
+      "LevelOffering": {
+        "type": "object",
+        "required": [
+          "id",
+          "capQualificationLevelId",
+          "title",
+          "description",
+          "status",
+          "price",
+          "publishedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "capQualificationLevelId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LevelOfferingStatus"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "LevelOfferingDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LevelOffering"
+          },
+          {
+            "type": "object",
+            "required": [
+              "items"
+            ],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LevelOfferingItem"
+                }
+              },
+              "alreadyOwned": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Course ids the authenticated learner already owns."
+              }
+            }
+          }
+        ]
+      },
+      "LevelOfferingCreate": {
+        "type": "object",
+        "required": [
+          "capQualificationLevelId",
+          "title"
+        ],
+        "properties": {
+          "capQualificationLevelId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "courseId"
+              ],
+              "properties": {
+                "courseId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "LevelOfferingWrite": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "courseId"
+              ],
+              "properties": {
+                "courseId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "LevelEnrollment": {
+        "type": "object",
+        "required": [
+          "id",
+          "offeringId",
+          "learnerLmsUserId",
+          "status",
+          "amount",
+          "paymentId",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "offeringId": {
+            "type": "string"
+          },
+          "offeringTitle": {
+            "type": "string"
+          },
+          "learnerLmsUserId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LevelEnrollmentStatus"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "priceRevisionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LearnerRow": {
+        "type": "object",
+        "required": [
+          "lmsUserId",
+          "name",
+          "photoUrl",
+          "email",
+          "coursesTaken",
+          "completionRate",
+          "joinedAt",
+          "status"
+        ],
+        "properties": {
+          "lmsUserId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "null"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coursesTaken": {
+            "type": "integer"
+          },
+          "completionRate": {
+            "type": "integer"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          }
+        }
+      },
+      "LearnerInviteBody": {
+        "type": "object",
+        "required": [
+          "invites"
+        ],
+        "properties": {
+          "invites": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": [
+                "email"
+              ],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "LearnerInviteResult": {
+        "type": "object",
+        "required": [
+          "email",
+          "status"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "invited",
+              "skipped",
+              "failed"
+            ]
+          },
+          "lmsUserId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "LearnerPatchBody": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          }
+        }
+      },
+      "LearnerEnrollBody": {
+        "type": "object",
+        "required": [
+          "enrollmentType"
+        ],
+        "properties": {
+          "enrollmentType": {
+            "type": "string",
+            "enum": [
+              "unsponsored",
+              "sponsored"
+            ]
+          },
+          "courseIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "levelOfferingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "organizationId": {
+            "type": "string"
+          }
+        }
+      },
+      "LearnerEnrollResult": {
+        "type": "object",
+        "required": [
+          "learnerLmsUserId",
+          "results"
+        ],
+        "properties": {
+          "learnerLmsUserId": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "id",
+                "status"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "course",
+                    "level_offering"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "granted",
+                    "skipped",
+                    "failed"
+                  ]
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "description",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrganizationWrite": {
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "SeatAllocation": {
+        "type": "object",
+        "required": [
+          "id",
+          "createdAt",
+          "organization",
+          "learnerCount",
+          "totalSlots",
+          "slotsAvailable",
+          "courses",
+          "levels"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "organization": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "email"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              }
+            }
+          },
+          "learnerCount": {
+            "type": "integer"
+          },
+          "totalSlots": {
+            "type": "integer"
+          },
+          "slotsAvailable": {
+            "type": "integer"
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SeatAllocationCreate": {
+        "type": "object",
+        "required": [
+          "totalSlots"
+        ],
+        "properties": {
+          "organizationId": {
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationWrite"
+          },
+          "totalSlots": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatAllocationItemInput"
+            }
+          },
+          "levelOfferings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatAllocationLevelInput"
+            }
+          }
+        }
+      },
+      "SeatAllocationAddSeats": {
+        "type": "object",
+        "properties": {
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatAllocationItemInput"
+            }
+          },
+          "levelOfferings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatAllocationLevelInput"
+            }
+          }
+        }
+      },
+      "SeatAllocationItemInput": {
+        "type": "object",
+        "required": [
+          "courseId"
+        ],
+        "properties": {
+          "courseId": {
+            "type": "string"
+          },
+          "csv": {
+            "type": "string"
+          },
+          "learners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "email"
+              ],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SeatAllocationLevelInput": {
+        "type": "object",
+        "required": [
+          "levelOfferingId"
+        ],
+        "properties": {
+          "levelOfferingId": {
+            "type": "string"
+          },
+          "csv": {
+            "type": "string"
+          },
+          "learners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "email"
+              ],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SeatAllocationWriteResult": {
+        "type": "object",
+        "required": [
+          "allocation",
+          "results"
+        ],
+        "properties": {
+          "allocation": {
+            "$ref": "#/components/schemas/SeatAllocation"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "email",
+                "status"
+              ],
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "provisioned",
+                    "enrolled",
+                    "skipped",
+                    "failed"
+                  ]
+                },
+                "lmsUserId": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CheckoutPaymentStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "completed",
+          "failed"
+        ]
+      },
+      "AdminPaymentKind": {
+        "type": "string",
+        "enum": [
+          "course",
+          "level"
+        ]
+      },
+      "AdminPaymentNamedRef": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminPaymentsSummary": {
+        "type": "object",
+        "required": [
+          "totalRevenue",
+          "pendingCount",
+          "completedCount"
+        ],
+        "properties": {
+          "totalRevenue": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "pendingCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completedCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "AdminPaymentListItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "learnerName",
+          "course",
+          "levelOffering",
+          "amount",
+          "status",
+          "receiptAvailable"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AdminPaymentKind"
+          },
+          "learnerName": {
+            "type": "string"
+          },
+          "course": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AdminPaymentNamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levelOffering": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AdminPaymentNamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckoutPaymentStatus"
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "initiatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "receiptAvailable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AdminPaymentReceipt": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "learnerName",
+          "course",
+          "levelOffering",
+          "amount",
+          "currency",
+          "status",
+          "paymentId",
+          "paidAt",
+          "initiatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AdminPaymentKind"
+          },
+          "learnerName": {
+            "type": "string"
+          },
+          "course": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AdminPaymentNamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levelOffering": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AdminPaymentNamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckoutPaymentStatus"
+          },
+          "paymentId": {
+            "type": "string"
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "initiatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "GenderKey": {
+        "type": "string",
+        "enum": [
+          "female",
+          "male",
+          "other",
+          "unspecified"
+        ]
+      },
+      "AdminDashboard": {
+        "type": "object",
+        "required": [
+          "year",
+          "kpis",
+          "revenueByMonth",
+          "topCourses",
+          "topLevels",
+          "genderDistribution"
+        ],
+        "properties": {
+          "year": {
+            "type": "integer",
+            "minimum": 2000,
+            "maximum": 2100
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/AdminDashboardKpis"
+          },
+          "revenueByMonth": {
+            "type": "array",
+            "minItems": 12,
+            "maxItems": 12,
+            "items": {
+              "$ref": "#/components/schemas/AdminDashboardMonthRevenue"
+            }
+          },
+          "topCourses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDashboardTopCourse"
+            }
+          },
+          "topLevels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDashboardTopLevel"
+            }
+          },
+          "genderDistribution": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/GenderDistributionBucket"
+            }
+          }
+        }
+      },
+      "AdminDashboardKpis": {
+        "type": "object",
+        "required": [
+          "totalLearners",
+          "totalCourses",
+          "certifiedLearners",
+          "activeEnrollments"
+        ],
+        "properties": {
+          "totalLearners": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalCourses": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "certifiedLearners": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activeEnrollments": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "AdminDashboardMonthRevenue": {
+        "type": "object",
+        "required": [
+          "month",
+          "amount"
+        ],
+        "properties": {
+          "month": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          }
+        }
+      },
+      "AdminDashboardTopCourse": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "unitId",
+          "enrollmentCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "unitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enrollmentCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "AdminDashboardTopLevel": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "enrollmentCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "enrollmentCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "GenderDistributionBucket": {
+        "type": "object",
+        "required": [
+          "gender",
+          "count"
+        ],
+        "properties": {
+          "gender": {
+            "$ref": "#/components/schemas/GenderKey"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "SettingsPhone": {
+        "type": "object",
+        "required": [
+          "countryCode",
+          "number"
+        ],
+        "properties": {
+          "countryCode": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          }
+        }
+      },
+      "SettingsContact": {
+        "type": "object",
+        "required": [
+          "email",
+          "phone"
+        ],
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "phone": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SettingsPhone"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "LegalDocument": {
+        "type": "object",
+        "required": [
+          "mode",
+          "content",
+          "documentAssetId",
+          "document"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "text",
+              "pdf"
+            ]
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentAssetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedAsset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "LmsSettings": {
+        "type": "object",
+        "required": [
+          "contact",
+          "terms",
+          "privacy",
+          "refund",
+          "updatedAt"
+        ],
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/SettingsContact"
+          },
+          "terms": {
+            "$ref": "#/components/schemas/LegalDocument"
+          },
+          "privacy": {
+            "$ref": "#/components/schemas/LegalDocument"
+          },
+          "refund": {
+            "$ref": "#/components/schemas/LegalDocument"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LegalDocumentPatch": {
+        "type": "object",
+        "description": "Either typed content or a PDF assetId — not both.",
+        "properties": {
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentAssetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LmsSettingsPatch": {
+        "type": "object",
+        "properties": {
+          "contact": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "email"
+              },
+              "phone": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SettingsPhone"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "terms": {
+            "$ref": "#/components/schemas/LegalDocumentPatch"
+          },
+          "privacy": {
+            "$ref": "#/components/schemas/LegalDocumentPatch"
+          },
+          "refund": {
+            "$ref": "#/components/schemas/LegalDocumentPatch"
           }
         }
       }

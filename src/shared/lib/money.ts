@@ -2,14 +2,15 @@ import type { Money } from "@/shared/types";
 
 export function formatMoney(money: Money): string {
   const amount = Number(money.amountMinorUnits) / 100;
+  const locale = money.currency === "NGN" ? "en-NG" : undefined;
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: money.currency,
       maximumFractionDigits: 0,
     }).format(amount);
   } catch {
-    return `${money.currency} ${amount.toLocaleString()}`;
+    return `${money.currency === "NGN" ? "₦" : money.currency} ${amount.toLocaleString()}`;
   }
 }
 

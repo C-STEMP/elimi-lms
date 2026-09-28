@@ -54,7 +54,7 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
             </span>
           </div>
           <h2 className="text-base font-bold text-primary">
-            Transaction Reciept
+            Transaction Receipt
           </h2>
         </div>
 
@@ -82,8 +82,8 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
 
           <div className="border-t border-b border-gray-200 py-3 flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-neutral-primary">RPL Assessment</p>
-              <p className="text-[11px] text-gray-400">Recognition of prior learning</p>
+              <p className="font-semibold text-neutral-primary">{item.course || "LMS Checkout"}</p>
+              <p className="text-[11px] text-gray-400">{item.description || "Course Enrollment"}</p>
             </div>
             <p className="font-bold text-neutral-primary">{item.amountPaid}</p>
           </div>

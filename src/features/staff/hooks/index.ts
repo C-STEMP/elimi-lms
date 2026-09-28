@@ -5,8 +5,12 @@ import * as staffApi from "@/features/staff/api";
 import type { PaginationParams } from "@/shared/types";
 import type { EntitlementGrantInput } from "@/features/enrollments/types";
 import type {
+  AdminDashboardQuery,
   AdminEnrollmentsQuery,
+  AdminLearnersQuery,
+  AdminPaymentsQuery,
   CreateStaffInviteInput,
+  LearnerPatchBody,
   UpdateStaffInput,
 } from "@/features/staff/types";
 
@@ -19,6 +23,16 @@ export const staffKeys = {
   adminEnrollments: () => [...staffKeys.all, "adminEnrollments"] as const,
   adminEnrollmentList: (params?: AdminEnrollmentsQuery) =>
     [...staffKeys.adminEnrollments(), params ?? {}] as const,
+  adminLearners: () => [...staffKeys.all, "adminLearners"] as const,
+  adminLearnerList: (params?: AdminLearnersQuery) =>
+    [...staffKeys.adminLearners(), params ?? {}] as const,
+  adminPayments: () => [...staffKeys.all, "adminPayments"] as const,
+  adminPaymentList: (params?: AdminPaymentsQuery) =>
+    [...staffKeys.adminPayments(), params ?? {}] as const,
+  adminPaymentsSummary: () => [...staffKeys.all, "adminPaymentsSummary"] as const,
+  adminPaymentReceipt: (id: string) => [...staffKeys.all, "adminPaymentReceipt", id] as const,
+  adminDashboard: (params?: AdminDashboardQuery) =>
+    [...staffKeys.all, "adminDashboard", params ?? {}] as const,
 };
 
 export function useStaffInvites(params?: PaginationParams) {
@@ -70,5 +84,58 @@ export function useGrantEntitlement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: staffKeys.adminEnrollments() });
     },
+  });
+}
+
+// ==================== Learners ====================
+
+export function useAdminLearners(params?: AdminLearnersQuery) {
+  return useQuery({
+    queryKey: staffKeys.adminLearnerList(params),
+    queryFn: () => staffApi.getAdminLearners(params),
+  });
+}
+
+export function usePatchAdminLearner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lmsUserId, input }: { lmsUserId: string; input: LearnerPatchBody }) =>
+      staffApi.patchAdminLearner(lmsUserId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKeys.adminLearners() });
+    },
+  });
+}
+
+// ==================== Payments ====================
+
+export function useAdminPaymentsList(params?: AdminPaymentsQuery) {
+  return useQuery({
+    queryKey: staffKeys.adminPaymentList(params),
+    queryFn: () => staffApi.getAdminPayments(params),
+  });
+}
+
+export function useAdminPaymentsSummary() {
+  return useQuery({
+    queryKey: staffKeys.adminPaymentsSummary(),
+    queryFn: () => staffApi.getAdminPaymentsSummary(),
+  });
+}
+
+export function useAdminPaymentReceipt(id: string | null) {
+  return useQuery({
+    queryKey: staffKeys.adminPaymentReceipt(id ?? ""),
+    queryFn: () => staffApi.getAdminPaymentReceipt(id!),
+    enabled: Boolean(id),
+  });
+}
+
+// ==================== Dashboard ====================
+
+export function useAdminDashboard(params?: AdminDashboardQuery) {
+  return useQuery({
+    queryKey: staffKeys.adminDashboard(params),
+    queryFn: () => staffApi.getAdminDashboard(params),
   });
 }

@@ -1,12 +1,13 @@
 export type PaymentsViewMode = "list" | "grid";
 
-export type PaymentStatus = "Paid" | "Deposit" | "Pending";
+export type PaymentStatus = "Paid" | "Deposit" | "Pending" | "Failed";
 
 export interface TransactionItem {
   id: string;
   candidateName: string;
   course: string;
   amountPaid: string;
+  amountMinor?: number;
   status: PaymentStatus;
   date: string;
   transactionId: string;

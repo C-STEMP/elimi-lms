@@ -3,7 +3,13 @@
 import { useMemo } from "react";
 import { LuBookOpen, LuGraduationCap, LuUsers, LuWallet } from "react-icons/lu";
 import { useAuthoringCourses } from "@/features/courses/hooks";
-import { useAdminEnrollments, useStaffMembers } from "@/features/staff/hooks";
+import {
+  useAdminDashboard,
+  useAdminEnrollments,
+  useAdminLearners,
+  useStaffMembers,
+} from "@/features/staff/hooks";
+import { cleanCourseTitle, formatLearnerName } from "../lib/learner-format";
 import type {
   AdminStatItem,
   RecentEnrollmentItem,
@@ -48,6 +54,8 @@ function getAmountMinor(item: unknown): number {
 }
 
 export function useAdminOverview() {
+  const dashboardQuery = useAdminDashboard();
+  const learnersQuery = useAdminLearners();
   const coursesQuery = useAuthoringCourses();
   const enrollmentsQuery = useAdminEnrollments();
   const staffQuery = useStaffMembers();
@@ -60,13 +68,26 @@ export function useAdminOverview() {
   const rawCourses = coursesQuery.data?.data;
   const rawEnrollments = enrollmentsQuery.data?.data;
   const rawStaff = staffQuery.data?.data;
+  const rawLearners = learnersQuery.data?.data;
+  const dashboard = dashboardQuery.data;
 
   const courses = useMemo(() => rawCourses ?? [], [rawCourses]);
   const enrollments = useMemo(() => rawEnrollments ?? [], [rawEnrollments]);
   const staff = useMemo(() => rawStaff ?? [], [rawStaff]);
 
-  const totalCourses = courses.length;
-  const totalEnrollments = enrollments.length;
+  const learnersMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (rawLearners ?? []).forEach((l) => {
+      if (l.name && l.name.trim()) {
+        map.set(l.lmsUserId, l.name.trim());
+      }
+    });
+    return map;
+  }, [rawLearners]);
+
+  const totalCourses = dashboard?.kpis?.totalCourses ?? courses.length;
+  const totalEnrollments =
+    dashboard?.kpis?.totalLearners ?? (rawLearners?.length || enrollments.length);
   const totalStaff = staff.length;
 
   const hasActivity = totalCourses > 0 || totalEnrollments > 0;
@@ -80,8 +101,9 @@ export function useAdminOverview() {
     let revenueMinor = 0;
     enrollments.forEach((e) => {
       const createdAt = e.createdAt ? new Date(e.createdAt) : null;
-      const amountMinor = getAmountMinor(e);
-      if (amountMinor > 0) {
+      const course = courses.find((c) => c.id === e.courseId);
+      const amountMinor = getAmountMinor(e) || getAmountMinor(course);
+      if (amountMinor > 0 && (e.status === "active" || e.status === "completed")) {
         revenueMinor += amountMinor;
         if (createdAt && !isNaN(createdAt.getTime())) {
           const month = createdAt.getMonth() + 1;
@@ -91,7 +113,7 @@ export function useAdminOverview() {
     });
 
     return { totalRevenueMinor: revenueMinor, monthlyRevenueMap: map };
-  }, [enrollments]);
+  }, [enrollments, courses]);
 
   const formattedRevenue =
     totalRevenueMinor > 0
@@ -141,7 +163,8 @@ export function useAdminOverview() {
   const topCourses: TopCourseItem[] = useMemo(() => {
     const map = new Map<string, { title: string; count: number }>();
     enrollments.forEach((e) => {
-      const title = e.courseTitle || e.courseId;
+      const course = courses.find((c) => c.id === e.courseId);
+      const title = cleanCourseTitle(e.courseTitle, course?.title || e.courseId);
       const existing = map.get(title) || { title, count: 0 };
       existing.count += 1;
       map.set(title, existing);
@@ -150,7 +173,7 @@ export function useAdminOverview() {
     if (map.size === 0 && courses.length > 0) {
       return courses.slice(0, 5).map((c) => ({
         id: c.id,
-        title: c.title,
+        title: cleanCourseTitle(c.title),
         count: "0",
       }));
     }
@@ -183,17 +206,29 @@ export function useAdminOverview() {
   }, [totalEnrollments]);
 
   const recentEnrollments: RecentEnrollmentItem[] = useMemo(() => {
-    return enrollments.slice(0, 5).map((e) => ({
-      id: e.id,
-      learnerName: e.learnerLmsUserId || "Learner",
-      course: e.courseTitle || e.courseId,
-      amountPaid: "Free",
-      status:
-        e.status === "completed" || e.status === "active"
-          ? "Successful"
-          : "Pending",
-    }));
-  }, [enrollments]);
+    return enrollments.slice(0, 5).map((e) => {
+      const course = courses.find((c) => c.id === e.courseId);
+      const courseTitle = cleanCourseTitle(e.courseTitle, course?.title || e.courseId);
+      const amountMinor = getAmountMinor(e) || getAmountMinor(course);
+      const amountPaid =
+        amountMinor > 0 ? `₦${(amountMinor / 100).toLocaleString()}` : "Free";
+
+      return {
+        id: e.id,
+        learnerName:
+          learnersMap.get(e.learnerLmsUserId) ||
+          (e as any).learnerName ||
+          (e as any).learner?.name ||
+          formatLearnerName(e.learnerLmsUserId),
+        course: courseTitle,
+        amountPaid,
+        status:
+          e.status === "completed" || e.status === "active"
+            ? "Successful"
+            : "Pending",
+      };
+    });
+  }, [enrollments, courses, learnersMap]);
 
   return {
     stats,

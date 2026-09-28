@@ -111,6 +111,7 @@ export * from "./constants/enrollment-data";
 export * from "./constants/staff-data";
 export * from "./constants/payments-data";
 export * from "./constants/configuration-data";
+export * from "./lib/learner-format";
 export type * from "./types";
 export type * from "./types/overview";
 export type * from "./types/courses";

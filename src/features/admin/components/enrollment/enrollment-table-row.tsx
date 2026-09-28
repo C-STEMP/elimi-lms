@@ -15,10 +15,6 @@ export const EnrollmentTableRow: React.FC<EnrollmentTableRowProps> = ({ item }) 
         {item.date}
       </td>
 
-      <td className="py-4 px-4 font-semibold text-neutral-primary">
-        {item.organizationName}
-      </td>
-
       <td className="py-4 px-4 text-neutral-secondary">
         {item.email}
       </td>

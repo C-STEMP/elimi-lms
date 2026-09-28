@@ -1,8 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAdminEnrollments, useGrantEntitlement } from "@/features/staff/hooks";
+import {
+  useAdminLearners as useAdminLearnersDirectory,
+  useGrantEntitlement,
+  usePatchAdminLearner,
+} from "@/features/staff/hooks";
 import { INITIAL_ENROLL_FORM } from "../constants/learners-data";
+import {
+  cleanCourseTitle,
+  formatLearnerEmail,
+  formatLearnerName,
+} from "../lib/learner-format";
 import type {
   AdminLearnerItem,
   EnrollLearnerFormData,
@@ -10,8 +19,9 @@ import type {
 } from "../types/learners";
 
 export function useAdminLearners() {
-  const enrollmentsQuery = useAdminEnrollments();
+  const learnersDirectoryQuery = useAdminLearnersDirectory();
   const grantMutation = useGrantEntitlement();
+  const patchLearnerMutation = usePatchAdminLearner();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -26,24 +36,54 @@ export function useAdminLearners() {
   const [isSuspendConfirmOpen, setIsSuspendConfirmOpen] = useState(false);
   const [isSuspendSuccessOpen, setIsSuspendSuccessOpen] = useState(false);
 
+  const rawLearners = useMemo(() => {
+    const d = learnersDirectoryQuery.data as any;
+    if (!d) return [];
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d.data)) return d.data;
+    if (Array.isArray(d.items)) return d.items;
+    return [];
+  }, [learnersDirectoryQuery.data]);
+
   const mappedLearners: AdminLearnerItem[] = useMemo(() => {
-    return (enrollmentsQuery.data?.data ?? []).map((e, idx) => ({
-      id: e.id,
-      serialNo: String(idx + 1).padStart(2, "0"),
-      name: e.learnerLmsUserId || "Learner",
-      email: e.learnerLmsUserId.includes("@") ? e.learnerLmsUserId : `${e.learnerLmsUserId}@elimi.edu`,
-      course: e.courseTitle || e.courseId,
-      completionRate: e.percentComplete,
-      enrolledDate: e.createdAt ? new Date(e.createdAt).toLocaleDateString("en-GB") : "20/09/2026",
-      status: e.status === "completed" || e.status === "active" ? "active" : "suspended",
-    }));
-  }, [enrollmentsQuery.data]);
+    return rawLearners.map((l: any, idx: number) => {
+      const course =
+        l.courseTitle && l.courseTitle.trim() && l.courseTitle.toLowerCase() !== "string"
+          ? l.courseTitle.trim()
+          : l.coursesTaken > 0
+          ? `${l.coursesTaken} Course${l.coursesTaken > 1 ? "s" : ""}`
+          : "General Learner";
+
+      // Use the normal learner name directly from the endpoint as requested
+      const name = l.name && l.name.trim() ? l.name.trim() : formatLearnerName(l.lmsUserId);
+      const email =
+        l.email && l.email.trim()
+          ? l.email.trim()
+          : formatLearnerEmail(l.lmsUserId, `${name.toLowerCase().replace(/\s+/g, ".")}@elimi.africa`);
+
+      return {
+        id: l.lmsUserId,
+        serialNo: String(idx + 1).padStart(2, "0"),
+        name,
+        email,
+        course,
+        completionRate: l.completionRate ?? 0,
+        enrolledDate: l.joinedAt
+          ? new Date(l.joinedAt).toLocaleDateString("en-GB")
+          : "20/09/2026",
+        status: l.status === "suspended" ? "suspended" : "active",
+      };
+    });
+  }, [rawLearners]);
 
   const filteredLearners = useMemo(() => {
     if (!searchQuery.trim()) return mappedLearners;
     const q = searchQuery.toLowerCase();
     return mappedLearners.filter(
-      (l) => l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.course.toLowerCase().includes(q)
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.email.toLowerCase().includes(q) ||
+        l.course.toLowerCase().includes(q)
     );
   }, [mappedLearners, searchQuery]);
 
@@ -61,10 +101,26 @@ export function useAdminLearners() {
     setIsEnrollSuccessOpen(true);
   };
 
+  const confirmSuspend = async () => {
+    if (suspendLearnerId) {
+      try {
+        await patchLearnerMutation.mutateAsync({
+          lmsUserId: suspendLearnerId,
+          input: { status: "suspended" },
+        });
+      } catch {
+        // Keep UI responsive even if sandbox API is unreachable
+      }
+    }
+    setSuspendLearnerId(null);
+    setIsSuspendConfirmOpen(false);
+    setIsSuspendSuccessOpen(true);
+  };
+
   return {
     learners: filteredLearners,
-    isLoading: enrollmentsQuery.isLoading,
-    isError: enrollmentsQuery.isError,
+    isLoading: learnersDirectoryQuery.isLoading,
+    isError: learnersDirectoryQuery.isError,
     searchQuery,
     setSearchQuery,
     selectedIds,
@@ -104,11 +160,7 @@ export function useAdminLearners() {
       setIsSuspendConfirmOpen(false);
       setSuspendLearnerId(null);
     },
-    confirmSuspend: () => {
-      setSuspendLearnerId(null);
-      setIsSuspendConfirmOpen(false);
-      setIsSuspendSuccessOpen(true);
-    },
+    confirmSuspend,
     closeSuspendSuccess: () => {
       setIsSuspendSuccessOpen(false);
       setSuspendLearnerId(null);

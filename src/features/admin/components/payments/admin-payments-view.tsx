@@ -14,6 +14,8 @@ import { useAdminPayments } from "../../hooks/use-admin-payments";
 export const AdminPaymentsView: React.FC = () => {
   const {
     transactions,
+    stats,
+    isLoading,
     searchQuery,
     setSearchQuery,
     statusFilter,
@@ -41,7 +43,11 @@ export const AdminPaymentsView: React.FC = () => {
     <div className="flex-1 flex flex-col gap-4 pb-6">
       <AdminHeader title="Payments" />
 
-      <PaymentsStatsGrid onTopupWallet={openTopup} />
+      <PaymentsStatsGrid
+        onTopupWallet={openTopup}
+        stats={stats}
+        isLoading={isLoading}
+      />
 
       <div>
         <h2 className="text-sm font-bold text-neutral-primary mb-2 select-none">
@@ -61,6 +67,7 @@ export const AdminPaymentsView: React.FC = () => {
           <PaymentsTable
             transactions={transactions}
             onOpenReceipt={openReceipt}
+            isLoading={isLoading}
           />
         </div>
       </div>

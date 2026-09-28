@@ -5,7 +5,7 @@ import type { EnrollmentType } from "./learners";
 export interface AdminEnrollmentItem {
   id: string;
   date: string;
-  organizationName: string;
+  organizationName?: string;
   email: string;
   numberOfStudents: number;
   slotsAvailable: number;

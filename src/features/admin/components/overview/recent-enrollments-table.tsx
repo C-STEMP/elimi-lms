@@ -26,7 +26,7 @@ export const RecentEnrollmentsTable: React.FC<RecentEnrollmentsTableProps> = ({
   viewAllHref = "/admin/enrollment",
 }) => {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-2xs border border-gray-100 flex flex-col justify-between select-none h-full">
+    <div className="bg-white rounded-2xl p-5 shadow-2xs border border-gray-100 flex flex-col select-none h-full">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base sm:text-lg font-bold text-neutral-primary tracking-tight">
           Enrollment
@@ -42,7 +42,7 @@ export const RecentEnrollmentsTable: React.FC<RecentEnrollmentsTableProps> = ({
       </div>
 
       {enrollments.length === 0 ? (
-        <div className="p-8 text-center text-xs text-neutral-secondary">
+        <div className="flex-1 flex items-center justify-center p-8 text-center text-xs text-neutral-secondary">
           No recent enrollments recorded.
         </div>
       ) : (

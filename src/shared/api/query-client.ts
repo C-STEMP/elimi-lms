@@ -13,7 +13,7 @@ function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 0, // Immediately fetch fresh data and display network request in DevTools
         refetchOnWindowFocus: false, // Prevent continuous reload when switching windows/tabs
         refetchOnReconnect: false,
         retry: 1,
