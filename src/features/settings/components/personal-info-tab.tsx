@@ -8,17 +8,14 @@ import { DatePicker } from "@/shared/components/ui/date-picker";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
 import { Loader } from "@/shared/components/ui/loader";
 import { useToast } from "@/shared/components/ui/toast";
-import { useOnboarding, useSaveOnboarding } from "@/features/onboarding/hooks";
 import { useCountries, useStates, useLgas } from "@/features/address/hooks";
-import { useMe } from "@/features/me/hooks";
-import { tokenStorage } from "@/shared/lib/token-storage";
+import { useMeProfile, usePatchMeProfile } from "@/features/me/hooks";
 import {
   fromIsoDate,
   toIsoDate,
   GENDER_OPTIONS,
 } from "@/features/onboarding/utils/constants";
-import type { LearnerOnboardingPayload } from "@/features/onboarding/types";
-import type { LmsPersonaType } from "@/shared/types";
+import type { LmsMeProfilePatch } from "@/features/me/types";
 
 interface ProfileFormState {
   firstName: string;
@@ -42,7 +39,7 @@ const INITIAL_FORM: ProfileFormState = {
   dob: "",
   gender: "",
   email: "",
-  countryCode: "+234",
+  countryCode: "",
   phoneNumber: "",
   country: "",
   state: "",
@@ -52,19 +49,19 @@ const INITIAL_FORM: ProfileFormState = {
 
 export const PersonalInfoTab: React.FC = () => {
   const { toast } = useToast();
-  const { data: me } = useMe();
-  const persona: LmsPersonaType = me?.personas?.[0]?.persona || "learner";
+  const { data: profile, isLoading: isLoadingProfile } = useMeProfile();
+  const { mutate: patchProfile, isPending: isSaving } = usePatchMeProfile();
 
-  const { data: onboarding, isLoading: isLoadingOnboarding } =
-    useOnboarding(persona);
-  const { mutate: saveOnboarding, isPending: isSaving } =
-    useSaveOnboarding(persona);
-
+  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(INITIAL_FORM);
   const [errors, setErrors] = useState<
     Partial<Record<keyof ProfileFormState, string>>
   >({});
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const { data: countries } = useCountries();
   const { data: states, isLoading: isLoadingStates } = useStates({
@@ -76,35 +73,36 @@ export const PersonalInfoTab: React.FC = () => {
   });
 
   useEffect(() => {
-    if (hydrated || !onboarding) return;
-    const payload = onboarding?.data as LearnerOnboardingPayload | undefined;
-    if (!payload) return;
+    if (hydrated || !profile) return;
 
-    const dobRaw = payload.personalDetails?.dob;
+    const personal = profile.personalDetails;
+    const contact = profile.contactInformation;
+    const residential = profile.residentialAddress;
+
+    const dobRaw = personal?.dob;
     const formattedDob = dobRaw
       ? dobRaw.includes("-")
         ? fromIsoDate(dobRaw)
         : dobRaw
       : "";
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
-      firstName: payload.personalDetails?.firstName ?? "",
-      lastName: payload.personalDetails?.lastName ?? "",
-      middleName: payload.personalDetails?.middleName ?? "",
-      gender: payload.personalDetails?.gender ?? "",
+      firstName: personal?.firstName ?? "",
+      lastName: personal?.lastName ?? "",
+      middleName: personal?.middleName ?? "",
+      gender: personal?.gender ?? "",
       dob: formattedDob,
-      email: tokenStorage.getUser()?.email ?? "",
-      countryCode:
-        payload.contactInformation?.phoneNumber?.countryCode ?? "+234",
-      phoneNumber: payload.contactInformation?.phoneNumber?.number ?? "",
-      country: payload.residentialAddress?.country ?? "",
-      state: payload.residentialAddress?.state ?? "",
-      lga: payload.residentialAddress?.lga ?? "",
-      address: payload.residentialAddress?.address ?? "",
+      email: profile.email ?? "",
+      countryCode: contact?.phoneNumber?.countryCode ?? "",
+      phoneNumber: contact?.phoneNumber?.number ?? "",
+      country: residential?.country ?? "",
+      state: residential?.state ?? "",
+      lga: residential?.lga ?? "",
+      address: residential?.address ?? "",
     });
+
     setHydrated(true);
-  }, [hydrated, onboarding]);
+  }, [hydrated, profile]);
 
   const countryOptions = useMemo(() => {
     const list = (countries?.data ?? []).map((c) => ({
@@ -173,15 +171,13 @@ export const PersonalInfoTab: React.FC = () => {
       return;
     }
 
-    const payloadRaw = onboarding?.data as LearnerOnboardingPayload | undefined;
     const isoDob = form.dob
       ? form.dob.includes("/")
         ? toIsoDate(form.dob)
         : form.dob
       : undefined;
 
-    const payload: LearnerOnboardingPayload = {
-      schemaVersion: payloadRaw?.schemaVersion ?? 1,
+    const payload: LmsMeProfilePatch = {
       personalDetails: {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -199,11 +195,11 @@ export const PersonalInfoTab: React.FC = () => {
         country: form.country,
         state: form.state,
         lga: form.lga,
-        address: form.address.trim(),
+        address: form.address.trim() || undefined,
       },
     };
 
-    saveOnboarding(payload, {
+    patchProfile(payload, {
       onSuccess: () => {
         toast({
           type: "success",
@@ -222,7 +218,7 @@ export const PersonalInfoTab: React.FC = () => {
     });
   };
 
-  if (isLoadingOnboarding) {
+  if (!mounted || (isLoadingProfile && !profile)) {
     return (
       <div className="bg-white rounded-[20px] p-6 lg:p-8 shadow-lg border border-gray-100/80 w-full">
         <Loader fullscreen={false} size="small" />
@@ -311,7 +307,9 @@ export const PersonalInfoTab: React.FC = () => {
             label="Email Address"
             type="email"
             value={form.email}
-            onChange={(e) => updateField("email", e.target.value)}
+            disabled
+            readOnly
+            helperText="Email is linked to your login account and cannot be changed."
             placeholder="yourname@email.com"
           />
           <PhoneInput

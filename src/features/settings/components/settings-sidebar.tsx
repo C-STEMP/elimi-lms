@@ -5,6 +5,7 @@ import { FiUpload } from "react-icons/fi";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { useToast } from "@/shared/components/ui/toast";
 import { useUploadFile } from "@/features/storage/hooks";
+import { usePatchMeProfile } from "@/features/me/hooks";
 import type { SettingsTab } from "@/features/settings/types";
 
 interface SettingsSidebarProps {
@@ -25,6 +26,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { mutate: uploadFile, isPending: isUploading } = useUploadFile();
+  const { mutate: patchProfile, isPending: isPatching } = usePatchMeProfile();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,19 +36,41 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
     onAvatarChange(localPreview);
 
     uploadFile(
-      { file, purpose: "profile_photo" },
+      { file, purpose: "passport" },
       {
         onSuccess: (asset) => {
-          onAvatarChange(asset.url);
-          // Note: passportAssetId/passportUrl aren't part of the onboarding
-          // API contract (backend rejects them as unrecognized keys), so the
-          // photo isn't persisted server-side yet — only shown for this
-          // session.
-          toast({
-            type: "info",
-            title: "Photo Uploaded",
-            description: "Profile photo uploaded.",
-          });
+          if (asset.url) {
+            onAvatarChange(asset.url);
+          }
+          if (asset.assetId) {
+            patchProfile(
+              { photoAssetId: asset.assetId },
+              {
+                onSuccess: () => {
+                  toast({
+                    type: "success",
+                    title: "Photo Updated",
+                    description: "Profile photo updated successfully.",
+                  });
+                },
+                onError: (err) => {
+                  toast({
+                    type: "error",
+                    title: "Profile Sync Failed",
+                    description:
+                      err.message ||
+                      "Photo was uploaded but profile could not be updated.",
+                  });
+                },
+              }
+            );
+          } else {
+            toast({
+              type: "success",
+              title: "Photo Uploaded",
+              description: "Profile photo uploaded successfully.",
+            });
+          }
         },
         onError: () => {
           toast({
@@ -81,12 +105,12 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={isUploading || isPatching}
             className="bg-primary font-sans hover:bg-[#721328] text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-60"
             title="Upload image"
           >
             <FiUpload className="w-3 h-3" />
-            <span>{isUploading ? "Uploading..." : "Upload"}</span>
+            <span>{isUploading || isPatching ? "Uploading..." : "Upload"}</span>
           </button>
           <span className="text-[10px] font-sans text-[#191913] font-medium">
             JPG or PNG

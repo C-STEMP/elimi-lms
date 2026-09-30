@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as meApi from "@/features/me/api";
-import type { LmsMe } from "@/features/me/types";
+import type { LmsMe, LmsMeProfile, LmsMeProfilePatch } from "@/features/me/types";
 
 import { tokenStorage } from "@/shared/lib/token-storage";
 export { isUserStaffOrAdmin } from "@/features/me/utils/is-staff-or-admin";
@@ -11,13 +11,31 @@ import { isUserStaffOrAdmin } from "@/features/me/utils/is-staff-or-admin";
 export const meKeys = {
   all: ["me"] as const,
   me: () => [...meKeys.all, "detail"] as const,
+  profile: () => [...meKeys.all, "profile"] as const,
 };
 
 export function useMe() {
   return useQuery({
     queryKey: meKeys.me(),
     queryFn: () => meApi.getMe(),
-    enabled: typeof window !== "undefined",
+  });
+}
+
+export function useMeProfile() {
+  return useQuery({
+    queryKey: meKeys.profile(),
+    queryFn: () => meApi.getMeProfile(),
+  });
+}
+
+export function usePatchMeProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: LmsMeProfilePatch) => meApi.patchMeProfile(payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(meKeys.profile(), data);
+      queryClient.invalidateQueries({ queryKey: meKeys.me() });
+    },
   });
 }
 

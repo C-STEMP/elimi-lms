@@ -10,6 +10,7 @@ import { Avatar } from "@/shared/components/ui/avatar";
 import { LogoutModal } from "@/shared/components/ui/logout-modal";
 import { useLogout } from "@/features/auth/hooks";
 import { useOnboarding } from "@/features/onboarding/hooks";
+import { useMeProfile } from "@/features/me/hooks";
 
 const navLinkClass =
   "px-4 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap";
@@ -41,10 +42,14 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
   const pathname = usePathname();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
   const { data: onboarding } = useOnboarding("learner");
+  const { data: profile } = useMeProfile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
-  const firstName = onboarding?.data?.personalDetails?.firstName;
+  const firstName =
+    profile?.personalDetails?.firstName ||
+    onboarding?.data?.personalDetails?.firstName;
+  const avatarUrl = profile?.photo?.url;
 
   useEffect(() => {
     document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
@@ -107,7 +112,12 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
               aria-label="Profile settings"
               className="relative shrink-0 cursor-pointer hover:opacity-85 transition-opacity"
             >
-              <Avatar name={firstName} size={36} className="border-2 border-white/30" />
+              <Avatar
+                src={avatarUrl || undefined}
+                name={firstName}
+                size={36}
+                className="border-2 border-white/30"
+              />
             </Link>
 
             <button
