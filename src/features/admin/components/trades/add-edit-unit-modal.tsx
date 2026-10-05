@@ -134,17 +134,34 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
         isPublished,
       });
     } catch (err: unknown) {
-      const axiosErr = err as {
+      const apiErr = err as {
         response?: {
-          data?: { message?: string; error?: { message?: string } };
+          data?: {
+            message?: string;
+            error?: {
+              message?: string;
+              details?: Array<{ field?: string; issue?: string }>;
+            };
+            details?: Array<{ field?: string; issue?: string }>;
+          };
         };
         message?: string;
+        details?: Array<{ field?: string; issue?: string }>;
       };
-      const errorMsg =
-        axiosErr?.response?.data?.message ||
-        axiosErr?.response?.data?.error?.message ||
-        axiosErr?.message ||
+      const detailsList =
+        apiErr?.details ||
+        apiErr?.response?.data?.details ||
+        apiErr?.response?.data?.error?.details;
+      const detailStr = detailsList
+        ?.map((d) => `${d.field ? `${d.field}: ` : ""}${d.issue || ""}`)
+        .filter(Boolean)
+        .join(", ");
+      const baseMsg =
+        apiErr?.response?.data?.error?.message ||
+        apiErr?.response?.data?.message ||
+        apiErr?.message ||
         "Failed to save course unit to LMS. Please check your inputs and try again.";
+      const errorMsg = detailStr ? `${baseMsg} (${detailStr})` : baseMsg;
       setSubmitError(errorMsg);
     }
   };

@@ -16,7 +16,7 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * Uploads a SCORM .zip package to Orchestrator storage using direct multipart /storage/upload.
+ * Uploads a SCORM .zip package to Orchestrator storage using /storage/upload with purpose="scorm_package".
  */
 export async function uploadScormPackage(
   file: File,
@@ -25,7 +25,7 @@ export async function uploadScormPackage(
   try {
     const asset = await uploadFile({
       file,
-      purpose: "lms_scorm_package",
+      purpose: "scorm_package",
       onProgress,
     });
     if (onProgress) onProgress(100);

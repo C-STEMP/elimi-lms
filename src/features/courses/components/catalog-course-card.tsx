@@ -43,7 +43,8 @@ export const CatalogCourseCard: React.FC<CatalogCourseCardProps> = ({
           {free ? "Free" : "Paid"}
         </span>
         {(() => {
-          const firstUnitId = course.capLinkage?.unitIds?.[0];
+          const firstUnitId =
+            course.capLinkage?.unitId || course.capLinkage?.unitIds?.[0];
           return firstUnitId ? (
             <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-md bg-neutral-900/70 text-white backdrop-blur-xs font-mono uppercase">
               {firstUnitId.replace("unit-", "UNIT ")}

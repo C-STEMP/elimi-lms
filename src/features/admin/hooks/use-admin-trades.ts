@@ -137,6 +137,8 @@ export function useAdminTrades() {
 
     return levelUnits.map((u, idx) => {
       const matchedCourse = lmsCourses.find((c) => {
+        const linkageUnitId = c.capLinkage?.unitId;
+        if (linkageUnitId && linkageUnitId === u.id) return true;
         const linkageUnitIds = Array.isArray(c.capLinkage?.unitIds)
           ? c.capLinkage.unitIds.filter(Boolean)
           : [];
@@ -323,11 +325,11 @@ export function useAdminTrades() {
             ? editingUnit.id
             : null;
 
-        const capLinkage = {
+        const capLinkage: CapLinkage = {
           sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
           tradeId: activeTrade.id || null,
-          unitIds: realUnitId ? [realUnitId] : [],
-        } satisfies CapLinkage;
+          ...(realUnitId ? { unitId: realUnitId } : {}),
+        };
 
         const createCoursePayload = {
           title: payload.title,
@@ -350,28 +352,41 @@ export function useAdminTrades() {
           });
         } catch (createErr: unknown) {
           const apiErr = createErr as ApiError | undefined;
-          const isUnitLinkageError =
+          const isLinkageError =
+            apiErr?.code === "validation_error" ||
             apiErr?.details?.some(
               (d) =>
-                d.field?.includes("capLinkage.unitId") ||
-                d.field?.includes("capLinkage.unitIds"),
+                d.field?.includes("capLinkage") ||
+                d.field?.includes("capLinkage.unitId"),
             ) ||
             apiErr?.message?.includes("cannot resolve CapLinkage ancestors") ||
-            apiErr?.message?.includes("Unknown CAP unitId");
+            apiErr?.message?.includes("Unknown CAP unitId") ||
+            apiErr?.message?.includes("Request validation failed");
 
-          if (isUnitLinkageError && capLinkage.unitIds?.length) {
+          if (isLinkageError) {
             console.warn(
-              "CAP unitId could not be resolved by LMS, retrying course creation without unitIds:",
-              capLinkage.unitIds,
+              "CAP linkage could not be resolved or validated by LMS, retrying course creation:",
+              apiErr?.details || apiErr?.message,
             );
-            course = await createCourse({
-              ...createCoursePayload,
-              capLinkage: {
-                sectorId: capLinkage.sectorId ?? null,
-                tradeId: capLinkage.tradeId ?? null,
-                unitIds: [],
-              },
-            });
+            if (capLinkage.unitId) {
+              try {
+                course = await createCourse({
+                  ...createCoursePayload,
+                  capLinkage: {
+                    sectorId: capLinkage.sectorId ?? null,
+                    tradeId: capLinkage.tradeId ?? null,
+                  },
+                });
+              } catch {
+                course = await createCourse({
+                  ...createCoursePayload,
+                });
+              }
+            } else {
+              course = await createCourse({
+                ...createCoursePayload,
+              });
+            }
           } else {
             throw createErr;
           }
@@ -396,10 +411,15 @@ export function useAdminTrades() {
       draftUnitCourseIdRef.current = null;
       closeAddUnitModal();
     } catch (err: unknown) {
+      const apiErr = err as ApiError | undefined;
+      const detailsStr = apiErr?.details
+        ?.map((d) => `${d.field ? `${d.field}: ` : ""}${d.issue || ""}`)
+        .filter(Boolean)
+        .join("; ");
       console.error(
         "Failed to save unit course to LMS:",
-        (err as ApiError)?.message,
-        err,
+        apiErr?.message,
+        detailsStr || apiErr?.details || err,
       );
       throw err;
     } finally {
@@ -448,13 +468,12 @@ export function useAdminTrades() {
         .replace(/\.[^/.]+$/, "")
         .replace(/[-_]/g, " ");
 
-      const capLinkage = {
+      const capLinkage: CapLinkage = {
         sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
         tradeId: activeTrade.id || null,
-        unitIds: [],
-      } satisfies CapLinkage;
+      };
 
-      const course = await createCourse({
+      const coursePayload = {
         title: courseTitle,
         description: `Imported SCORM course unit for ${activeTrade.name} (Level ${activeLevel.level})`,
         price: { amountMinorUnits: "0", currency: "NGN" },
@@ -463,8 +482,21 @@ export function useAdminTrades() {
           requireAllRequiredItems: true,
           requirePassedAssessments: true,
         },
-        capLinkage,
-      });
+      };
+
+      let course;
+      try {
+        course = await createCourse({
+          ...coursePayload,
+          capLinkage,
+        });
+      } catch (createErr: unknown) {
+        console.warn(
+          "Course creation with capLinkage failed in handleUploadZip, retrying without capLinkage:",
+          (createErr as ApiError)?.message,
+        );
+        course = await createCourse(coursePayload);
+      }
 
       try {
         await attachScormPackage(course.id, packageAssetId, courseTitle);
@@ -472,10 +504,15 @@ export function useAdminTrades() {
         throw new CourseContentError(course.id, attachErr);
       }
     } catch (err: unknown) {
+      const apiErr = err as ApiError | undefined;
+      const detailsStr = apiErr?.details
+        ?.map((d) => `${d.field ? `${d.field}: ` : ""}${d.issue || ""}`)
+        .filter(Boolean)
+        .join("; ");
       console.error(
         "Failed to upload SCORM course:",
-        (err as ApiError)?.message,
-        err,
+        apiErr?.message,
+        detailsStr || apiErr?.details || err,
       );
       throw err;
     } finally {

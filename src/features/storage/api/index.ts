@@ -11,7 +11,7 @@ import type {
   UploadUrlResult,
 } from "@/features/storage/types";
 
-/** Small files and direct uploads (photos, logos, SCORM packages) — uploaded directly through Orchestrator. */
+/** Small files and uploads (photos, logos, SCORM packages) — uploaded directly through Orchestrator /storage/upload. */
 export function uploadFile({ file, purpose, onProgress }: UploadFileInput) {
   const formData = new FormData();
   formData.append("file", file);
