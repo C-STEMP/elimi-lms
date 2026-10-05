@@ -1142,7 +1142,7 @@
           "Authoring"
         ],
         "summary": "Add an item (native lesson/video/quiz/assignment or SCORM package)",
-        "description": "For `scorm_package`, client first uploads the zip via Orchestrator `/storage/upload-url` (purpose `lms_scorm_package`) and passes `packageAssetId`. LMS validates imsmanifest.xml server-side and extracts for player hosting. Native media uses other OL assetIds.",
+        "description": "For `scorm_package`, client first uploads the zip via Orchestrator `/storage/upload-url` (purpose `scorm_package`) and passes `packageAssetId`. LMS validates imsmanifest.xml server-side and extracts for player hosting. Native media uses other OL assetIds.",
         "parameters": [
           {
             "$ref": "#/components/parameters/CourseIdPath"
