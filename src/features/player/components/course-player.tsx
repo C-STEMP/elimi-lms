@@ -180,8 +180,8 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
       >
         {isCompleted && <CertificateBanner enrollmentId={enrollmentId} />}
 
-        {/* Main Course Content Stage - takes whole container by default */}
-        <main className="bg-white border border-border-gray/70 rounded-2xl shadow-sm w-full flex-1 min-w-0 overflow-hidden flex flex-col">
+        {/* Main Course Content Stage - takes whole container by default, outline drawer constrained inside */}
+        <main className="bg-white border border-border-gray/70 rounded-2xl shadow-sm w-full flex-1 min-w-0 overflow-hidden flex flex-col relative">
           {selectedItem ? (
             <ItemContentPane
               enrollmentId={enrollmentId}
@@ -204,67 +204,67 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
               Select an item from the curriculum to begin.
             </div>
           )}
-        </main>
 
-        {/* Slide-over Course Outline Overlay - Displays OVER and hides on toggling */}
-        <AnimatePresence>
-          {isSidebarOpen && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => setIsSidebarOpen(false)}
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs cursor-pointer"
-              />
+          {/* Slide-over Course Outline Overlay - Constrained strictly within the content space */}
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <>
+                {/* Backdrop within content container only */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="absolute inset-0 z-30 bg-black/35 backdrop-blur-[2px] cursor-pointer"
+                />
 
-              {/* Slide-over Drawer displaying OVER content */}
-              <motion.aside
-                initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "-100%" }}
-                transition={{ type: "spring", damping: 26, stiffness: 260 }}
-                className="fixed top-0 left-0 bottom-0 z-50 w-80 sm:w-96 max-w-[85vw] bg-white shadow-2xl flex flex-col border-r border-border-gray/70"
-              >
-                <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border-gray/50 bg-gray-50/80">
-                  <div>
-                    <h3 className="font-extrabold text-sm sm:text-base text-neutral-primary">
-                      Course Outline
-                    </h3>
-                    <p className="text-[11px] text-neutral-secondary font-medium mt-0.5">
-                      {flatItems.filter((i) => i.progressStatus === "completed").length} of {flatItems.length} completed
-                    </p>
+                {/* Slide-over Drawer strictly within the space of the content */}
+                <motion.aside
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                  className="absolute top-0 left-0 bottom-0 z-40 w-80 sm:w-96 max-w-[85%] bg-white shadow-2xl flex flex-col border-r border-border-gray/70"
+                >
+                  <div className="flex items-center justify-between p-4 border-b border-border-gray/50 bg-gray-50/80">
+                    <div>
+                      <h3 className="font-extrabold text-sm sm:text-base text-neutral-primary">
+                        Course Outline
+                      </h3>
+                      <p className="text-[11px] text-neutral-secondary font-medium mt-0.5">
+                        {flatItems.filter((i) => i.progressStatus === "completed").length} of {flatItems.length} completed
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsSidebarOpen(false)}
+                      title="Hide outline"
+                      className="p-1.5 rounded-lg text-neutral-secondary hover:text-neutral-primary hover:bg-gray-200/60 transition-colors cursor-pointer"
+                    >
+                      <FiX className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsSidebarOpen(false)}
-                    title="Hide outline"
-                    className="p-2 rounded-xl text-neutral-secondary hover:text-neutral-primary hover:bg-gray-200/60 transition-colors cursor-pointer"
-                  >
-                    <FiX className="w-5 h-5" />
-                  </button>
-                </div>
 
-                <div className="flex-1 overflow-y-auto p-4">
-                  {outline && outline.modules.length > 0 ? (
-                    <CurriculumList
-                      modules={outline.modules}
-                      mode="interactive"
-                      selectedItemId={selectedItemId ?? undefined}
-                      onSelectItem={(item) => {
-                        setSelectedItemId(item.id);
-                      }}
-                    />
-                  ) : (
-                    <p className="text-neutral-secondary text-sm">No modules yet.</p>
-                  )}
-                </div>
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
+                  <div className="flex-1 overflow-y-auto p-4">
+                    {outline && outline.modules.length > 0 ? (
+                      <CurriculumList
+                        modules={outline.modules}
+                        mode="interactive"
+                        selectedItemId={selectedItemId ?? undefined}
+                        onSelectItem={(item) => {
+                          setSelectedItemId(item.id);
+                        }}
+                      />
+                    ) : (
+                      <p className="text-neutral-secondary text-sm">No modules yet.</p>
+                    )}
+                  </div>
+                </motion.aside>
+              </>
+            )}
+          </AnimatePresence>
+        </main>
       </motion.div>
     </div>
   );
