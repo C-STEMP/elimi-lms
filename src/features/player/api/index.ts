@@ -1,4 +1,4 @@
-import { lmsClient } from "@/shared/api/clients";
+import { lmsClient, lmsDirectClient, withDirectAuth } from "@/shared/api/clients";
 import { unwrapItem } from "@/shared/api/response";
 import type {
   ItemLaunch,
@@ -9,8 +9,18 @@ import type {
 } from "@/features/player/types";
 
 export function launchItem(enrollmentId: string, itemId: string) {
-  return unwrapItem<ItemLaunch>(
-    lmsClient.post(`/enrollments/${enrollmentId}/items/${itemId}/launch`)
+  return withDirectAuth((accessToken) =>
+    unwrapItem<ItemLaunch>(
+      lmsDirectClient.post(
+        `/enrollments/${enrollmentId}/items/${itemId}/launch`,
+        undefined,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      )
+    )
   );
 }
 

@@ -80,8 +80,8 @@ export function ScormPlayer({
       key={session.sessionId}
       title="SCORM content"
       src={src}
-      className="h-full w-full min-h-150 border-0 rounded-xl"
-      allow="fullscreen; autoplay"
+      className="h-full w-full border-0 bg-white"
+      allow="fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture"
     />
   );
 }

@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { FiAward } from "react-icons/fi";
+import { AnimatePresence, motion } from "framer-motion";
+import { FiAward, FiX } from "react-icons/fi";
 import { Button } from "@/shared/components/ui/button";
 import { InlineSpinner } from "@/shared/components/ui/loader";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
@@ -62,6 +62,7 @@ const CertificateBanner: React.FC<{ enrollmentId: string }> = ({ enrollmentId })
 export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
   const queryClient = useQueryClient();
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pendingAdvanceRef = useRef(false);
 
   const {
@@ -84,16 +85,33 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
 
   const selectedItem: CourseOutlineItem | undefined = flatItems.find((i) => i.id === selectedItemId);
 
+  const currentIndex = flatItems.findIndex((i) => i.id === selectedItemId);
+  const prevItem = currentIndex > 0 ? flatItems[currentIndex - 1] : undefined;
+  const nextItem =
+    currentIndex >= 0 && currentIndex < flatItems.length - 1
+      ? flatItems[currentIndex + 1]
+      : undefined;
+
+  const handlePrevious = () => {
+    if (prevItem) {
+      setSelectedItemId(prevItem.id);
+    }
+  };
+
+  const handleNext = () => {
+    if (nextItem && !nextItem.locked) {
+      setSelectedItemId(nextItem.id);
+    }
+  };
+
   useEffect(() => {
     if (!outline || flatItems.length === 0) return;
 
     if (pendingAdvanceRef.current && selectedItemId) {
       pendingAdvanceRef.current = false;
-      const currentIndex = flatItems.findIndex((i) => i.id === selectedItemId);
-      const next = flatItems[currentIndex + 1];
+      const curIdx = flatItems.findIndex((i) => i.id === selectedItemId);
+      const next = flatItems[curIdx + 1];
       if (next && !next.locked) {
-        // Auto-advancing to the next unlocked item after a completion, not re-derivable during render.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedItemId(next.id);
         return;
       }
@@ -106,8 +124,6 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
         flatItems[0];
       setSelectedItemId(firstAvailable?.id ?? null);
     }
-    // Only re-derive selection when the outline itself changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outline]);
 
   const handleProgress = () => {
@@ -160,58 +176,97 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 flex flex-col gap-5"
+        className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 flex flex-col gap-4"
       >
-        <div className="flex flex-col gap-2">
-          <div className="w-full h-2 bg-primary-solid/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary-solid rounded-full transition-all duration-500"
-              style={{ width: `${percentComplete}%` }}
-            />
-          </div>
-          <span className="text-neutral-secondary text-xs font-semibold">
-            {percentComplete}% complete
-          </span>
-        </div>
-
         {isCompleted && <CertificateBanner enrollmentId={enrollmentId} />}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 items-start">
-          <div className="bg-white border border-border-gray/60 rounded-2xl p-4 lg:sticky lg:top-6">
-            {outline && outline.modules.length > 0 ? (
-              <CurriculumList
-                modules={outline.modules}
-                mode="interactive"
-                selectedItemId={selectedItemId ?? undefined}
-                onSelectItem={(item) => setSelectedItemId(item.id)}
-              />
-            ) : (
-              <p className="text-neutral-secondary text-sm">No modules yet.</p>
-            )}
-          </div>
+        {/* Main Course Content Stage - takes whole container by default */}
+        <main className="bg-white border border-border-gray/70 rounded-2xl shadow-sm w-full flex-1 min-w-0 overflow-hidden flex flex-col">
+          {selectedItem ? (
+            <ItemContentPane
+              enrollmentId={enrollmentId}
+              item={selectedItem}
+              learnerId={learnerId}
+              learnerName={learnerName}
+              onProgress={handleProgress}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              hasPrevious={Boolean(prevItem)}
+              hasNext={Boolean(nextItem)}
+              previousTitle={prevItem?.title}
+              nextTitle={nextItem?.title}
+              isNextLocked={Boolean(nextItem?.locked)}
+              isSidebarOpen={isSidebarOpen}
+              onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+            />
+          ) : (
+            <div className="h-96 flex items-center justify-center text-neutral-secondary text-sm">
+              Select an item from the curriculum to begin.
+            </div>
+          )}
+        </main>
 
-          <div className="bg-white border border-border-gray/60 rounded-2xl p-4 sm:p-6 min-h-125">
-            {selectedItem ? (
-              <>
-                <h2 className="text-lg font-extrabold text-neutral-primary mb-4">
-                  {selectedItem.title}
-                </h2>
-                <ItemContentPane
-                  enrollmentId={enrollmentId}
-                  item={selectedItem}
-                  learnerId={learnerId}
-                  learnerName={learnerName}
-                  onProgress={handleProgress}
-                />
-              </>
-            ) : (
-              <div className="h-full flex items-center justify-center text-neutral-secondary text-sm">
-                Select an item from the curriculum to begin.
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Slide-over Course Outline Overlay - Displays OVER and hides on toggling */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs cursor-pointer"
+              />
+
+              {/* Slide-over Drawer displaying OVER content */}
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                className="fixed top-0 left-0 bottom-0 z-50 w-80 sm:w-96 max-w-[85vw] bg-white shadow-2xl flex flex-col border-r border-border-gray/70"
+              >
+                <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border-gray/50 bg-gray-50/80">
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-neutral-primary">
+                      Course Outline
+                    </h3>
+                    <p className="text-[11px] text-neutral-secondary font-medium mt-0.5">
+                      {flatItems.filter((i) => i.progressStatus === "completed").length} of {flatItems.length} completed
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSidebarOpen(false)}
+                    title="Hide outline"
+                    className="p-2 rounded-xl text-neutral-secondary hover:text-neutral-primary hover:bg-gray-200/60 transition-colors cursor-pointer"
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4">
+                  {outline && outline.modules.length > 0 ? (
+                    <CurriculumList
+                      modules={outline.modules}
+                      mode="interactive"
+                      selectedItemId={selectedItemId ?? undefined}
+                      onSelectItem={(item) => {
+                        setSelectedItemId(item.id);
+                      }}
+                    />
+                  ) : (
+                    <p className="text-neutral-secondary text-sm">No modules yet.</p>
+                  )}
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
 };
+

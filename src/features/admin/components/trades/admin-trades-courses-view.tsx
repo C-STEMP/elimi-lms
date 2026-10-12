@@ -47,6 +47,8 @@ export const AdminTradesCoursesView: React.FC = () => {
     openEditUnitModal,
     closeAddUnitModal,
     handleSaveUnit,
+    handleTogglePublishUnit,
+    publishingUnitId,
 
     isDeleteUnitConfirmOpen,
     deletingUnit,
@@ -103,6 +105,8 @@ export const AdminTradesCoursesView: React.FC = () => {
             onUploadZip={openUploadZipModal}
             onEditUnit={openEditUnitModal}
             onDeleteUnit={openDeleteUnitConfirm}
+            onTogglePublishUnit={handleTogglePublishUnit}
+            publishingUnitId={publishingUnitId}
           />
         )}
 

@@ -15,6 +15,8 @@ export const playerKeys = {
     [...playerKeys.all, "progress", enrollmentId] as const,
   scormSession: (sessionId: string) =>
     [...playerKeys.all, "scorm", sessionId] as const,
+  launch: (enrollmentId: string, itemId: string) =>
+    [...playerKeys.all, "launch", enrollmentId, itemId] as const,
 };
 
 export function useEnrollmentProgress(enrollmentId: string) {
@@ -32,6 +34,22 @@ export function useScormSession(sessionId: string) {
     enabled: Boolean(sessionId),
     staleTime: 0,
     gcTime: 0,
+  });
+}
+
+export function useItemLaunch(
+  enrollmentId: string,
+  itemId: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: playerKeys.launch(enrollmentId, itemId),
+    queryFn: () => playerApi.launchItem(enrollmentId, itemId),
+    enabled: Boolean(enrollmentId && itemId && enabled),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 

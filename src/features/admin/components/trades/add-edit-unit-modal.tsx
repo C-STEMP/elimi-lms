@@ -9,6 +9,9 @@ import {
   FiBookOpen,
   FiPlus,
   FiAlertCircle,
+  FiEye,
+  FiEyeOff,
+  FiGlobe,
 } from "react-icons/fi";
 import type { UnitCourseItem } from "@/features/cap/types";
 import { uploadScormPackage } from "@/features/storage";
@@ -393,20 +396,106 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="unit-publish-checkbox"
-              checked={isPublished}
-              onChange={(e) => setIsPublished(e.target.checked)}
-              className="rounded border-gray-300 text-primary-solid focus:ring-primary-solid h-4 w-4 cursor-pointer"
-            />
-            <label
-              htmlFor="unit-publish-checkbox"
-              className="text-xs font-medium text-neutral-primary select-none cursor-pointer"
-            >
-              Publish course unit immediately to catalogue
-            </label>
+          {/* Catalogue Publication Status - Full Button Selection */}
+          <div className="bg-gray-50/90 rounded-2xl p-4 border border-gray-200/80 flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold text-neutral-primary">
+                  Catalogue Publication Status
+                </p>
+                <p className="text-[11px] text-neutral-secondary">
+                  Choose whether this unit is live in the learner catalogue or kept as an authoring draft
+                </p>
+              </div>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${
+                  isPublished
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isPublished ? "bg-emerald-500" : "bg-amber-500"
+                  }`}
+                />
+                {isPublished ? "Live in Catalogue" : "Draft (Hidden)"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Draft Button */}
+              <button
+                type="button"
+                onClick={() => setIsPublished(false)}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                  !isPublished
+                    ? "border-amber-500 bg-white ring-2 ring-amber-500/20 shadow-xs"
+                    : "border-gray-200 hover:border-gray-300 bg-white/70 hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        !isPublished
+                          ? "bg-amber-100 text-amber-700 font-bold"
+                          : "bg-gray-100 text-neutral-secondary"
+                      }`}
+                    >
+                      <FiEyeOff className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="font-bold text-xs text-neutral-primary">
+                      Keep as Draft
+                    </span>
+                  </div>
+                  {!isPublished && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                      Selected
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-neutral-secondary leading-snug">
+                  Saved privately. Hidden from learners while content is in preparation.
+                </p>
+              </button>
+
+              {/* Publish Button */}
+              <button
+                type="button"
+                onClick={() => setIsPublished(true)}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                  isPublished
+                    ? "border-emerald-600 bg-white ring-2 ring-emerald-600/20 shadow-xs"
+                    : "border-gray-200 hover:border-gray-300 bg-white/70 hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        isPublished
+                          ? "bg-emerald-100 text-emerald-700 font-bold"
+                          : "bg-gray-100 text-neutral-secondary"
+                      }`}
+                    >
+                      <FiGlobe className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="font-bold text-xs text-neutral-primary">
+                      Publish to Catalogue
+                    </span>
+                  </div>
+                  {isPublished && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                      Selected
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-neutral-secondary leading-snug">
+                  Live & accessible immediately to learners enrolled in this level.
+                </p>
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 mt-2">
@@ -421,19 +510,23 @@ export const AddEditUnitModal: React.FC<AddEditUnitModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || isUploading}
-              className="py-2.5 px-5 rounded-xl bg-primary-solid hover:bg-primary-hover active:scale-[0.98] text-white text-xs font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
+              className={`py-2.5 px-5 rounded-xl text-white text-xs font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50 active:scale-[0.98] ${
+                isPublished
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-primary-solid hover:bg-primary-hover"
+              }`}
             >
               {isSubmitting ? (
                 <span>Saving Unit...</span>
-              ) : unit ? (
+              ) : isPublished ? (
                 <>
                   <FiCheck className="w-3.5 h-3.5" />
-                  <span>Save Unit</span>
+                  <span>{unit ? "Save & Publish Unit" : "Create & Publish Unit"}</span>
                 </>
               ) : (
                 <>
-                  <FiPlus className="w-3.5 h-3.5" />
-                  <span>Create Unit</span>
+                  <FiCheck className="w-3.5 h-3.5" />
+                  <span>{unit ? "Save as Draft" : "Create Draft Unit"}</span>
                 </>
               )}
             </button>

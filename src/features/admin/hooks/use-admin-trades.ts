@@ -14,6 +14,7 @@ import {
   createCourse,
   updateCourse,
   publishCourse,
+  unpublishCourse,
 } from "@/features/courses/api";
 import type { CapLinkage } from "@/features/courses/types";
 import { uploadScormPackage } from "@/features/storage";
@@ -88,12 +89,22 @@ export function useAdminTrades() {
 
     const effectiveLevelCount = activeTrade.levelCount || 3;
     const unitsList = activeTradeUnits;
+    const lmsCourses = authoringQuery.data?.data || [];
 
     return Array.from({ length: effectiveLevelCount }, (_, idx) => {
       const levelNum = idx + 1;
-      const unitsInThisLevel = unitsList.filter(
+      let unitsInThisLevel = unitsList.filter(
         (u) => ((u as { level?: number }).level || 1) === levelNum,
       );
+
+      if (
+        unitsInThisLevel.length === 0 &&
+        levelNum === 1 &&
+        unitsList.length > 0
+      ) {
+        unitsInThisLevel = unitsList;
+      }
+
       const totalUnits =
         unitsInThisLevel.length > 0
           ? unitsInThisLevel.length
@@ -102,16 +113,33 @@ export function useAdminTrades() {
               Math.floor((activeTrade.unitCount || 0) / effectiveLevelCount),
             );
 
+      const publishedUnits = unitsInThisLevel.filter((u) => {
+        const matchedCourse = lmsCourses.find((c) => {
+          const linkageUnitId = c.capLinkage?.unitId;
+          if (linkageUnitId && linkageUnitId === u.id) return true;
+          const linkageUnitIds = Array.isArray(c.capLinkage?.unitIds)
+            ? c.capLinkage.unitIds.filter(Boolean)
+            : [];
+          if (linkageUnitIds.includes(u.id)) return true;
+          if (c.title?.trim().toLowerCase() === u.title?.trim().toLowerCase())
+            return true;
+          if (u.referenceNumber && c.description?.includes(u.referenceNumber))
+            return true;
+          return false;
+        });
+        return matchedCourse?.status === "published";
+      }).length;
+
       return {
         id: `level-${levelNum}-${activeTrade.id}`,
         level: levelNum,
         title: `NSQ Level ${levelNum} - ${activeTrade.name}`,
-        status: "published",
+        status: publishedUnits > 0 ? "published" : "draft",
         totalUnits: totalUnits,
-        publishedUnits: totalUnits,
+        publishedUnits: publishedUnits,
       };
     });
-  }, [activeTrade, activeTradeUnits]);
+  }, [activeTrade, activeTradeUnits, authoringQuery.data]);
 
   const activeLevel = useMemo(() => {
     if (!activeTrade || activeLevelNumber === null) return null;
@@ -406,6 +434,8 @@ export function useAdminTrades() {
 
       if (payload.isPublished) {
         await publishCourse(courseId);
+      } else if (editingUnit?.status === "published" && courseId) {
+        await unpublishCourse(courseId);
       }
 
       draftUnitCourseIdRef.current = null;
@@ -430,6 +460,35 @@ export function useAdminTrades() {
         queryKey: ["cap", "trade-units", activeTradeId],
       });
       setIsSubmitting(false);
+    }
+  };
+
+  const [publishingUnitId, setPublishingUnitId] = useState<string | null>(null);
+
+  const handleTogglePublishUnit = async (unit: UnitCourseItem) => {
+    if (!unit.courseId) {
+      openEditUnitModal(unit);
+      return;
+    }
+
+    setPublishingUnitId(unit.id);
+    try {
+      if (unit.status === "published") {
+        await unpublishCourse(unit.courseId);
+      } else {
+        await publishCourse(unit.courseId);
+      }
+    } catch (err: unknown) {
+      console.error("Failed to toggle publish status for unit:", err);
+      throw err;
+    } finally {
+      setPublishingUnitId(null);
+      await queryClient.invalidateQueries({
+        queryKey: courseKeys.authoringLists(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["cap", "trade-units", activeTradeId],
+      });
     }
   };
 
@@ -577,6 +636,8 @@ export function useAdminTrades() {
     openEditUnitModal,
     closeAddUnitModal,
     handleSaveUnit,
+    handleTogglePublishUnit,
+    publishingUnitId,
 
     isDeleteUnitConfirmOpen,
     deletingUnit,

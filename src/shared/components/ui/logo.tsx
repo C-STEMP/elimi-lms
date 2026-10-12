@@ -12,14 +12,14 @@ interface LogoProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const Logo: React.FC<LogoProps> = ({
   className = "",
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to keep it out of `...props` (the div doesn't accept a `theme` attribute)
-  theme,
+  theme = "light",
   width = 141,
   height,
   href = "/",
   ...props
 }) => {
   const computedHeight = height ?? Math.round(width / (141 / 80));
+  const logoSrc = theme === "dark" ? ASSETS_URL.logoIcon2 : ASSETS_URL.logoIcon;
 
   const content = (
     <div
@@ -28,7 +28,7 @@ export const Logo: React.FC<LogoProps> = ({
       {...props}
     >
       <Image
-        src={ASSETS_URL.logoIcon}
+        src={logoSrc}
         alt="Elimi Logo"
         width={width}
         height={computedHeight}

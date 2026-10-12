@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "@/features/auth/api";
 import { tokenStorage } from "@/shared/lib/token-storage";
+import { clearCachedAccessToken } from "@/shared/api/clients";
 import { meKeys } from "@/features/me/hooks";
 import type {
   ChangePasswordInput,
@@ -102,6 +103,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
+      clearCachedAccessToken();
       tokenStorage.clearUser();
       queryClient.clear();
     },
@@ -113,8 +115,10 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: (input: DeleteAccountInput) => authApi.deleteAccount(input),
     onSuccess: () => {
+      clearCachedAccessToken();
       tokenStorage.clearUser();
       queryClient.clear();
     },
   });
 }
+
