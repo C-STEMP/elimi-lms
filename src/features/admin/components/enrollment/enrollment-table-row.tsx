@@ -15,8 +15,8 @@ export const EnrollmentTableRow: React.FC<EnrollmentTableRowProps> = ({ item }) 
         {item.date}
       </td>
 
-      <td className="py-4 px-4 text-neutral-secondary">
-        {item.email}
+      <td className="py-4 px-4 font-medium text-neutral-primary">
+        {item.course}
       </td>
 
       <td className="py-4 px-4 font-medium">
@@ -25,10 +25,6 @@ export const EnrollmentTableRow: React.FC<EnrollmentTableRowProps> = ({ item }) 
 
       <td className="py-4 px-4 font-medium">
         {item.slotsAvailable}
-      </td>
-
-      <td className="py-4 px-4 font-medium text-neutral-primary">
-        {item.course}
       </td>
 
       <td className="py-4 px-4 text-center">
