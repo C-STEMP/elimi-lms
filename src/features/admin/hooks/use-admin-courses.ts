@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthoringCourses, courseKeys } from "@/features/courses/hooks";
-import { publishCourse, unpublishCourse } from "@/features/courses/api";
+import { publishCourse, unpublishCourse, deleteCourse } from "@/features/courses/api";
 import { createCourseWithScorm, CourseContentError } from "../services/course-authoring-flow";
 import { useToast } from "@/shared/components/ui/toast";
 import type { ApiError } from "@/shared/types";
@@ -41,18 +41,20 @@ export function useAdminCourses() {
   const [isDeleteSuccessOpen, setIsDeleteSuccessOpen] = useState(false);
 
   const mappedCourses: AdminCourseItem[] = useMemo(() => {
-    return (authoringQuery.data?.data ?? []).map((c) => {
-      const amount = Number(c.price?.amountMinorUnits || 0) / 100;
-      return {
-        id: c.id,
-        title: c.title,
-        description: c.description || "",
-        price: amount === 0 ? "Free" : `₦${amount.toLocaleString()}`,
-        isFree: amount === 0,
-        status: (c.status as "published" | "draft") || "draft",
-        thumbnailUrl: c.thumbnailAssetId || DEFAULT_PAINT_THUMBNAIL,
-      };
-    });
+    return (authoringQuery.data?.data ?? [])
+      .filter((c) => (c.status as string) !== "archived")
+      .map((c) => {
+        const amount = Number(c.price?.amountMinorUnits || 0) / 100;
+        return {
+          id: c.id,
+          title: c.title,
+          description: c.description || "",
+          price: amount === 0 ? "Free" : `₦${amount.toLocaleString()}`,
+          isFree: amount === 0,
+          status: (c.status as "published" | "draft") || "draft",
+          thumbnailUrl: c.thumbnailAssetId || DEFAULT_PAINT_THUMBNAIL,
+        };
+      });
   }, [authoringQuery.data]);
 
   const filteredCourses = useMemo(() => {
@@ -127,6 +129,33 @@ export function useAdminCourses() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteCourseId) {
+      setIsDeleteConfirmOpen(false);
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await deleteCourse(deleteCourseId);
+      queryClient.removeQueries({ queryKey: courseKeys.authoringDetail(deleteCourseId) });
+      queryClient.removeQueries({ queryKey: courseKeys.detail(deleteCourseId) });
+      await queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
+      await queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+      setDeleteCourseId(null);
+      setIsDeleteConfirmOpen(false);
+      setIsDeleteSuccessOpen(true);
+    } catch (err) {
+      toast({
+        type: "error",
+        title: "Couldn't Delete Course",
+        description: (err as ApiError)?.message || "Something went wrong. Please try again.",
+      });
+      setIsDeleteConfirmOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     courses: filteredCourses,
     isLoading: authoringQuery.isLoading,
@@ -163,11 +192,7 @@ export function useAdminCourses() {
     deleteCourseId,
     openDeleteConfirm: (id: string) => { setDeleteCourseId(id); setIsDeleteConfirmOpen(true); },
     closeDeleteConfirm: () => { setIsDeleteConfirmOpen(false); setDeleteCourseId(null); },
-    confirmDelete: () => {
-      setDeleteCourseId(null);
-      setIsDeleteConfirmOpen(false);
-      setIsDeleteSuccessOpen(true);
-    },
+    confirmDelete,
     closeDeleteSuccess: () => { setIsDeleteSuccessOpen(false); setDeleteCourseId(null); },
   };
 }

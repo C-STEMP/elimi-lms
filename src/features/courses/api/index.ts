@@ -64,6 +64,12 @@ export function unpublishCourse(courseId: string) {
   );
 }
 
+export function deleteCourse(courseId: string) {
+  return unwrapItem<GenericMessage>(
+    lmsClient.delete(`/authoring/courses/${courseId}`)
+  );
+}
+
 export function createModule(courseId: string, input: ModuleWrite) {
   return unwrapItem<CourseModule>(
     lmsClient.post(`/authoring/courses/${courseId}/modules`, input)

@@ -118,6 +118,19 @@ export function useUnpublishCourse(courseId: string) {
   });
 }
 
+export function useDeleteCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (courseId: string) => coursesApi.deleteCourse(courseId),
+    onSuccess: (_data, courseId) => {
+      queryClient.removeQueries({ queryKey: courseKeys.authoringDetail(courseId) });
+      queryClient.removeQueries({ queryKey: courseKeys.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: courseKeys.authoringLists() });
+      queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+    },
+  });
+}
+
 export function useCreateModule(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({

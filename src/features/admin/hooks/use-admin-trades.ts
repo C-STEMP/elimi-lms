@@ -15,10 +15,12 @@ import {
   updateCourse,
   publishCourse,
   unpublishCourse,
+  deleteCourse,
 } from "@/features/courses/api";
 import type { CapLinkage } from "@/features/courses/types";
 import { uploadScormPackage } from "@/features/storage";
 import type { ApiError } from "@/shared/types";
+import { useToast } from "@/shared/components/ui/toast";
 import {
   attachScormPackage,
   courseHasContent,
@@ -29,6 +31,7 @@ export function useAdminTrades() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const tradeIdParam =
     searchParams.get("tradeId") ||
@@ -89,7 +92,9 @@ export function useAdminTrades() {
 
     const effectiveLevelCount = activeTrade.levelCount || 3;
     const unitsList = activeTradeUnits;
-    const lmsCourses = authoringQuery.data?.data || [];
+    const lmsCourses = (authoringQuery.data?.data || []).filter(
+      (c) => c.status !== "archived",
+    );
 
     return Array.from({ length: effectiveLevelCount }, (_, idx) => {
       const levelNum = idx + 1;
@@ -149,7 +154,9 @@ export function useAdminTrades() {
   const currentUnits: UnitCourseItem[] = useMemo(() => {
     if (!activeTrade || !activeLevelNumber || !activeTradeId) return [];
 
-    const lmsCourses = authoringQuery.data?.data || [];
+    const lmsCourses = (authoringQuery.data?.data || []).filter(
+      (c) => c.status !== "archived",
+    );
 
     let levelUnits = activeTradeUnits.filter(
       (u) => ((u as { level?: number }).level || 1) === activeLevelNumber,
@@ -163,7 +170,9 @@ export function useAdminTrades() {
       levelUnits = activeTradeUnits;
     }
 
-    return levelUnits.map((u, idx) => {
+    const matchedCourseIds = new Set<string>();
+
+    const mappedCapUnits: UnitCourseItem[] = levelUnits.map((u, idx) => {
       const matchedCourse = lmsCourses.find((c) => {
         const linkageUnitId = c.capLinkage?.unitId;
         if (linkageUnitId && linkageUnitId === u.id) return true;
@@ -178,6 +187,10 @@ export function useAdminTrades() {
         return false;
       });
 
+      if (matchedCourse?.id) {
+        matchedCourseIds.add(matchedCourse.id);
+      }
+
       return {
         id: u.id,
         referenceNumber:
@@ -191,6 +204,39 @@ export function useAdminTrades() {
         levelNumber: activeLevelNumber,
       };
     });
+
+    const extraTradeCourses: UnitCourseItem[] = lmsCourses
+      .filter((c) => {
+        if (matchedCourseIds.has(c.id)) return false;
+        const matchesTrade =
+          c.capLinkage?.tradeId === activeTrade.id ||
+          (activeTrade.name &&
+            c.description
+              ?.toLowerCase()
+              .includes(activeTrade.name.toLowerCase()));
+        if (!matchesTrade) return false;
+        const levelTag = `level ${activeLevelNumber}`;
+        if (
+          c.description &&
+          /level\s+\d+/i.test(c.description) &&
+          !c.description.toLowerCase().includes(levelTag)
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .map((c, idx) => ({
+        id: `course-${c.id}`,
+        referenceNumber: `C-${activeLevelNumber}-${String(idx + 1).padStart(2, "0")}`,
+        title: c.title,
+        status: c.status === "published" ? "published" : "draft",
+        path: `/courses/${c.id}`,
+        courseId: c.id,
+        price: c.price,
+        levelNumber: activeLevelNumber,
+      }));
+
+    return [...mappedCapUnits, ...extraTradeCourses];
   }, [
     activeTrade,
     activeLevelNumber,
@@ -502,8 +548,53 @@ export function useAdminTrades() {
     setIsDeleteUnitConfirmOpen(false);
   };
 
-  const confirmDeleteUnit = () => {
-    closeDeleteUnitConfirm();
+  const confirmDeleteUnit = async () => {
+    if (!deletingUnit?.courseId) {
+      toast({
+        type: "info",
+        title: "No Course Attached",
+        description:
+          "This unit does not have an attached LMS course to delete.",
+      });
+      closeDeleteUnitConfirm();
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await deleteCourse(deletingUnit.courseId);
+      queryClient.removeQueries({
+        queryKey: courseKeys.authoringDetail(deletingUnit.courseId),
+      });
+      queryClient.removeQueries({
+        queryKey: courseKeys.detail(deletingUnit.courseId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: courseKeys.authoringLists(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: courseKeys.lists(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["cap", "trade-units", activeTradeId],
+      });
+      toast({
+        type: "success",
+        title: "Course Deleted",
+        description: "Course deleted successfully.",
+      });
+      closeDeleteUnitConfirm();
+    } catch (err: unknown) {
+      const apiErr = err as ApiError | undefined;
+      toast({
+        type: "error",
+        title: "Couldn't Delete Course",
+        description:
+          apiErr?.message || "Failed to delete course. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Upload SCORM ZIP
