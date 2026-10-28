@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import CountUp from "react-countup";
 import { useCapPublicStats, useLmsPublicStats } from "@/features/landing/hooks";
 
 export const PublicStatsStrip: React.FC = () => {
@@ -15,26 +16,19 @@ export const PublicStatsStrip: React.FC = () => {
 
   const metrics = [
     {
-      value: lmsStats
-        ? lmsStats.learners.byStatus.active.toLocaleString()
-        : "—",
+      end: lmsStats ? lmsStats.learners.byStatus.active : null,
       label: "Active Learners",
     },
     {
-      value:
-        publishedCoursesCount !== null
-          ? publishedCoursesCount.toLocaleString()
-          : "—",
+      end: publishedCoursesCount,
       label: "Published Courses",
     },
     {
-      value: lmsStats ? lmsStats.enrollments.total.toLocaleString() : "—",
+      end: lmsStats ? lmsStats.enrollments.total : null,
       label: "Course Enrollments",
     },
     {
-      value: capStats
-        ? capStats.catalogue.trades.active.toLocaleString()
-        : "—",
+      end: capStats ? capStats.catalogue.trades.active : null,
       label: "Accredited Trades",
     },
   ];
@@ -52,7 +46,20 @@ export const PublicStatsStrip: React.FC = () => {
               className="rounded-2xl border border-neutral-200/80 bg-[#fafafa] px-4 py-4 sm:py-5 text-center transition-all hover:border-primary-solid/30 hover:bg-white hover:shadow-xs"
             >
               <span className="block text-2xl sm:text-3xl lg:text-4xl font-black text-[#111827] tracking-tight leading-none">
-                {stat.value}
+                {stat.end !== null ? (
+                  <CountUp
+                    end={stat.end}
+                    duration={2}
+                    separator=","
+                    enableScrollSpy
+                    scrollSpyOnce
+                  />
+                ) : (
+                  <span
+                    className="mx-auto block h-7 sm:h-9 lg:h-10 w-16 sm:w-24 rounded-md bg-neutral-200 animate-pulse"
+                    aria-hidden="true"
+                  />
+                )}
               </span>
               <span className="mt-1.5 block text-[11px] sm:text-xs font-semibold text-neutral-500 tracking-wide">
                 {stat.label}
