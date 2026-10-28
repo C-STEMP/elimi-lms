@@ -90,21 +90,34 @@ export function useAdminTrades() {
   const currentLevels: LevelItem[] = useMemo(() => {
     if (!activeTrade) return [];
 
-    const effectiveLevelCount = activeTrade.levelCount || 3;
+    const nosLevels =
+      activeTradeDetail?.activeNosDocument?.qualificationLevels || [];
+    const effectiveLevelCount =
+      nosLevels.length || activeTrade.levelCount || 3;
     const unitsList = activeTradeUnits;
     const lmsCourses = (authoringQuery.data?.data || []).filter(
       (c) => c.status !== "archived",
     );
 
     return Array.from({ length: effectiveLevelCount }, (_, idx) => {
-      const levelNum = idx + 1;
-      let unitsInThisLevel = unitsList.filter(
-        (u) => ((u as { level?: number }).level || 1) === levelNum,
-      );
+      const nosLevel = nosLevels[idx];
+      const levelNum = nosLevel?.level ?? idx + 1;
+      const qualificationLevelId = nosLevel?.id;
+
+      let unitsInThisLevel =
+        nosLevel?.units && nosLevel.units.length > 0
+          ? nosLevel.units
+          : unitsList.filter((u) => {
+              if (qualificationLevelId && u.qualificationLevelId) {
+                return u.qualificationLevelId === qualificationLevelId;
+              }
+              return ((u as { level?: number }).level || 1) === levelNum;
+            });
 
       if (
         unitsInThisLevel.length === 0 &&
         levelNum === 1 &&
+        nosLevels.length === 0 &&
         unitsList.length > 0
       ) {
         unitsInThisLevel = unitsList;
@@ -137,6 +150,7 @@ export function useAdminTrades() {
 
       return {
         id: `level-${levelNum}-${activeTrade.id}`,
+        qualificationLevelId,
         level: levelNum,
         title: `NSQ Level ${levelNum} - ${activeTrade.name}`,
         status: publishedUnits > 0 ? "published" : "draft",
@@ -144,7 +158,7 @@ export function useAdminTrades() {
         publishedUnits: publishedUnits,
       };
     });
-  }, [activeTrade, activeTradeUnits, authoringQuery.data]);
+  }, [activeTrade, activeTradeDetail, activeTradeUnits, authoringQuery.data]);
 
   const activeLevel = useMemo(() => {
     if (!activeTrade || activeLevelNumber === null) return null;
@@ -158,13 +172,30 @@ export function useAdminTrades() {
       (c) => c.status !== "archived",
     );
 
-    let levelUnits = activeTradeUnits.filter(
-      (u) => ((u as { level?: number }).level || 1) === activeLevelNumber,
+    const nosLevels =
+      activeTradeDetail?.activeNosDocument?.qualificationLevels || [];
+    const matchedNosLevel = nosLevels.find(
+      (lvl) => lvl.level === activeLevelNumber,
     );
+    const targetQualificationLevelId =
+      matchedNosLevel?.id || activeLevel?.qualificationLevelId;
+
+    let levelUnits =
+      matchedNosLevel?.units && matchedNosLevel.units.length > 0
+        ? matchedNosLevel.units
+        : activeTradeUnits.filter((u) => {
+            if (targetQualificationLevelId && u.qualificationLevelId) {
+              return u.qualificationLevelId === targetQualificationLevelId;
+            }
+            return (
+              ((u as { level?: number }).level || 1) === activeLevelNumber
+            );
+          });
 
     if (
       levelUnits.length === 0 &&
       activeLevelNumber === 1 &&
+      nosLevels.length === 0 &&
       activeTradeUnits.length > 0
     ) {
       levelUnits = activeTradeUnits;
@@ -215,6 +246,11 @@ export function useAdminTrades() {
               ?.toLowerCase()
               .includes(activeTrade.name.toLowerCase()));
         if (!matchesTrade) return false;
+        const matchesLevelByLinkage =
+          targetQualificationLevelId &&
+          c.capLinkage?.qualificationLevelId &&
+          c.capLinkage.qualificationLevelId !== targetQualificationLevelId;
+        if (matchesLevelByLinkage) return false;
         const levelTag = `level ${activeLevelNumber}`;
         if (
           c.description &&
@@ -239,6 +275,8 @@ export function useAdminTrades() {
     return [...mappedCapUnits, ...extraTradeCourses];
   }, [
     activeTrade,
+    activeTradeDetail,
+    activeLevel,
     activeLevelNumber,
     activeTradeId,
     activeTradeUnits,
@@ -402,6 +440,9 @@ export function useAdminTrades() {
         const capLinkage: CapLinkage = {
           sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
           tradeId: activeTrade.id || null,
+          ...(targetLevel.qualificationLevelId
+            ? { qualificationLevelId: targetLevel.qualificationLevelId }
+            : {}),
           ...(realUnitId ? { unitId: realUnitId } : {}),
         };
 
@@ -449,6 +490,12 @@ export function useAdminTrades() {
                   capLinkage: {
                     sectorId: capLinkage.sectorId ?? null,
                     tradeId: capLinkage.tradeId ?? null,
+                    ...(capLinkage.qualificationLevelId
+                      ? {
+                          qualificationLevelId:
+                            capLinkage.qualificationLevelId,
+                        }
+                      : {}),
                   },
                 });
               } catch {
@@ -621,6 +668,9 @@ export function useAdminTrades() {
       const capLinkage: CapLinkage = {
         sectorId: activeTrade.sectorId || activeTrade.sector?.id || null,
         tradeId: activeTrade.id || null,
+        ...(activeLevel.qualificationLevelId
+          ? { qualificationLevelId: activeLevel.qualificationLevelId }
+          : {}),
       };
 
       const coursePayload = {

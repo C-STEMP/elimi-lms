@@ -29,6 +29,10 @@ export interface Unit {
   purpose?: string;
   assessmentMethods?: string[];
   structure?: Record<string, unknown>;
+  /** Parent CAP QualificationLevel.id (`#/components/schemas/Unit`). */
+  qualificationLevelId?: string;
+  tradeId?: string;
+  sectorId?: string;
 }
 
 export interface QualificationLevel {

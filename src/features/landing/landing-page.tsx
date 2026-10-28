@@ -1,6 +1,7 @@
 import React from "react";
 import { TopMarquee } from "./components/top-marquee";
 import { HeroSection } from "./components/hero-section";
+import { PublicStatsStrip } from "./components/public-stats-strip";
 import { PartnerStrip } from "./components/partner-strip";
 import { CoursesSection } from "./components/courses-section";
 import { MarqueeTicker } from "./components/marquee-ticker";
@@ -15,6 +16,7 @@ export const LandingPage: React.FC = () => {
       <TopMarquee />
       <main className="flex-1">
         <HeroSection />
+        <PublicStatsStrip />
         <PartnerStrip />
         <CoursesSection />
         <MarqueeTicker />
