@@ -59,7 +59,7 @@ export const SignUpForm: React.FC = () => {
 
     setErrors({});
     registerUser(
-      { email, password, intents: ["lms"] },
+      { email, password, intents: ["cap", "lms"] },
       {
         onSuccess: () => {
           toast({
@@ -98,7 +98,7 @@ export const SignUpForm: React.FC = () => {
       return;
     }
     loginWithGoogle(
-      { idToken: credentialResponse.credential, provider: "google", intents: ["lms"] },
+      { idToken: credentialResponse.credential, provider: "google", intents: ["cap", "lms"] },
       {
         onSuccess: (data) => {
           toast({
