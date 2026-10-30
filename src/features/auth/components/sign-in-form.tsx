@@ -170,7 +170,7 @@ export const SignInForm: React.FC = () => {
       return;
     }
     loginWithGoogle(
-      { idToken: credentialResponse.credential, provider: "google" },
+      { idToken: credentialResponse.credential, provider: "google", intents: ["cap", "lms"] },
       {
         onSuccess: (data) => {
           toast({
