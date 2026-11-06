@@ -78,7 +78,9 @@ export type ScormRuntimeOptions = {
   initialLessonStatus?: ScormLessonStatus;
   initialSuspendData?: string;
   initialLessonLocation?: string;
-  onCommit: (snapshot: ScormCmiCommit) => void;
+  initialScoreRaw?: number | null;
+  initialScoreMax?: number | null;
+  onCommit: (snapshot: ScormCmiCommit, keepalive?: boolean) => void;
 };
 
 /**
@@ -93,12 +95,17 @@ export class ScormRuntime {
   private initialized = false;
   private terminated = false;
   private lastError: ScormErrorCode = "0";
+  private isDirty = false;
   private readonly onCommit: ScormRuntimeOptions["onCommit"];
   private readonly startedAt = Date.now();
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private intervalTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: ScormRuntimeOptions) {
     const isResume = Boolean(
-      options.initialSuspendData || options.initialLessonLocation
+      options.initialSuspendData ||
+      options.initialLessonLocation ||
+      options.initialLessonStatus
     );
     this.cmi = buildInitialCmi(options.learnerId, options.learnerName, isResume);
     if (options.initialLessonStatus) {
@@ -110,11 +117,30 @@ export class ScormRuntime {
     if (options.initialLessonLocation) {
       this.cmi["cmi.core.lesson_location"].value = options.initialLessonLocation;
     }
+    if (options.initialScoreRaw !== undefined && options.initialScoreRaw !== null) {
+      this.cmi["cmi.core.score.raw"].value = String(options.initialScoreRaw);
+    }
+    if (options.initialScoreMax !== undefined && options.initialScoreMax !== null) {
+      this.cmi["cmi.core.score.max"].value = String(options.initialScoreMax);
+    }
     this.onCommit = options.onCommit;
+
+    // Auto-commit every 15 seconds if any field changed
+    this.intervalTimer = setInterval(() => {
+      if (this.isDirty && this.initialized && !this.terminated) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[SCORM RTE] 15s interval auto-committing dirty state");
+        }
+        this.commit(false);
+      }
+    }, 15000);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- SCORM 1.2 always calls this with "", kept for signature fidelity.
   LMSInitialize(_param: string): string {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[SCORM RTE] LMSInitialize called");
+    }
     if (this.initialized) {
       this.lastError = "101";
       return FALSE;
@@ -126,8 +152,15 @@ export class ScormRuntime {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- SCORM 1.2 always calls this with "", kept for signature fidelity.
   LMSFinish(_param: string): string {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[SCORM RTE] LMSFinish called");
+    }
     if (!this.requireActive()) return FALSE;
-    this.commit();
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    this.commit(false);
     this.terminated = true;
     this.lastError = "0";
     return TRUE;
@@ -156,12 +189,16 @@ export class ScormRuntime {
   }
 
   LMSSetValue(element: string, value: string): string {
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[SCORM RTE] LMSSetValue(${element}, ${value})`);
+    }
     if (!this.requireActive()) return FALSE;
 
     const field = this.cmi[element];
     if (!field) {
       if (this.isCollectionElement(element)) {
         this.cmi[element] = { value, access: "read-write" };
+        this.isDirty = true;
         this.lastError = "0";
         return TRUE;
       }
@@ -176,15 +213,55 @@ export class ScormRuntime {
       this.lastError = "201";
       return FALSE;
     }
-    field.value = value;
+
+    // Never downgrade: once completed or passed, ignore later incomplete or not attempted
+    if (element === "cmi.core.lesson_status") {
+      const cur = this.cmi["cmi.core.lesson_status"].value;
+      if (
+        (cur === "completed" || cur === "passed") &&
+        (value === "incomplete" || value === "not attempted" || value === "browsed")
+      ) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`[SCORM RTE] Ignoring status downgrade from "${cur}" to "${value}"`);
+        }
+        this.lastError = "0";
+        return TRUE;
+      }
+    }
+
+    if (field.value !== value) {
+      field.value = value;
+      this.isDirty = true;
+    }
     this.lastError = "0";
+
+    // Auto-commit immediately when lesson status transitions to completed or passed
+    if (
+      element === "cmi.core.lesson_status" &&
+      (value === "completed" || value === "passed")
+    ) {
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = null;
+      }
+      this.commit(false);
+      return TRUE;
+    }
+
     return TRUE;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- SCORM 1.2 always calls this with "", kept for signature fidelity.
   LMSCommit(_param: string): string {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[SCORM RTE] LMSCommit called");
+    }
     if (!this.requireActive()) return FALSE;
-    this.commit();
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    this.commit(false);
     this.lastError = "0";
     return TRUE;
   }
@@ -213,20 +290,49 @@ export class ScormRuntime {
     return /^cmi\.(objectives|interactions)\.\d+\./.test(element);
   }
 
-  private commit(): void {
+  commit(keepalive = false): void {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
     const scoreRawText = this.cmi["cmi.core.score.raw"].value;
     const scoreMaxText = this.cmi["cmi.core.score.max"].value;
     const sessionTime =
       this.cmi["cmi.core.session_time"].value || elapsedScormTime(this.startedAt);
 
-    this.onCommit({
+    const snapshot: ScormCmiCommit = {
       lessonStatus: mapLessonStatus(this.cmi["cmi.core.lesson_status"].value),
       scoreRaw: scoreRawText ? Number(scoreRawText) : null,
       scoreMax: scoreMaxText ? Number(scoreMaxText) : null,
       sessionTime,
       suspendData: this.cmi["cmi.suspend_data"].value,
       location: this.cmi["cmi.core.lesson_location"].value,
-    });
+    };
+
+    this.isDirty = false;
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[SCORM RTE] Committing snapshot to backend:", snapshot, { keepalive });
+    }
+
+    this.onCommit(snapshot, keepalive);
+  }
+
+  destroy(keepalive = true): void {
+    if (this.intervalTimer) {
+      clearInterval(this.intervalTimer);
+      this.intervalTimer = null;
+    }
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    if (this.initialized && !this.terminated) {
+      if (this.isDirty) {
+        this.commit(keepalive);
+      }
+      this.terminated = true;
+    }
   }
 }
 

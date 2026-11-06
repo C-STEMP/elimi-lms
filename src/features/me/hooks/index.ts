@@ -14,17 +14,21 @@ export const meKeys = {
   profile: () => [...meKeys.all, "profile"] as const,
 };
 
-export function useMe() {
+export function useMe(enabled = true) {
   return useQuery({
     queryKey: meKeys.me(),
     queryFn: () => meApi.getMe(),
+    enabled,
+    retry: false,
   });
 }
 
-export function useMeProfile() {
+export function useMeProfile(enabled = true) {
   return useQuery({
     queryKey: meKeys.profile(),
     queryFn: () => meApi.getMeProfile(),
+    enabled,
+    retry: false,
   });
 }
 

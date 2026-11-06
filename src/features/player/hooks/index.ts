@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as playerApi from "@/features/player/api";
 import { enrollmentKeys } from "@/features/enrollments/hooks";
 import { certificateKeys } from "@/features/certificates/hooks";
+import { courseKeys } from "@/features/courses/hooks";
 import type {
   ItemProgressWrite,
   ScormCmiCommit,
@@ -24,6 +25,8 @@ export function useEnrollmentProgress(enrollmentId: string) {
     queryKey: playerKeys.progress(enrollmentId),
     queryFn: () => playerApi.getEnrollmentProgress(enrollmentId),
     enabled: Boolean(enrollmentId),
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -77,6 +80,7 @@ export function useRecordItemProgress(enrollmentId: string) {
         queryKey: enrollmentKeys.detail(enrollmentId),
       });
       queryClient.invalidateQueries({ queryKey: certificateKeys.mineLists() });
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
     },
   });
 }
@@ -99,6 +103,7 @@ export function useCommitScormCmi(enrollmentId: string) {
         queryKey: enrollmentKeys.detail(enrollmentId),
       });
       queryClient.invalidateQueries({ queryKey: certificateKeys.mineLists() });
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
     },
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FiAward } from "react-icons/fi";
@@ -8,21 +8,10 @@ import { Button } from "@/shared/components/ui/button";
 import { InlineSpinner } from "@/shared/components/ui/loader";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { useMyCertificates } from "@/features/certificates/hooks";
-import { useResolveAssets } from "@/features/storage/hooks";
 
 export const CertificatesView: React.FC = () => {
   const { data: certificates, isLoading } = useMyCertificates();
 
-  const assetIds = useMemo(
-    () => (certificates?.data ?? []).map((c) => c.assetId).filter((id): id is string => Boolean(id)),
-    [certificates]
-  );
-  const { data: resolvedAssets } = useResolveAssets(assetIds);
-  const urlByAssetId = useMemo(() => {
-    const map = new Map<string, string>();
-    resolvedAssets?.assets.forEach((asset) => map.set(asset.assetId, asset.url));
-    return map;
-  }, [resolvedAssets]);
 
   return (
     <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
@@ -56,7 +45,6 @@ export const CertificatesView: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {certificates.data.map((certificate) => {
-              const url = certificate.assetId ? urlByAssetId.get(certificate.assetId) : undefined;
               return (
                 <div
                   key={certificate.id}
@@ -75,20 +63,17 @@ export const CertificatesView: React.FC = () => {
                         : `Issued ${new Date(certificate.issuedAt).toLocaleDateString()}`}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    fullWidth
-                    disabled={!url || certificate.status === "revoked"}
-                    onClick={() => url && window.open(url, "_blank", "noopener,noreferrer")}
-                  >
-                    {certificate.status === "revoked"
-                      ? "Revoked"
-                      : url
-                        ? "View Certificate"
-                        : "Generating..."}
-                  </Button>
+                  {certificate.status === "revoked" ? (
+                    <Button type="button" variant="outline" size="sm" fullWidth disabled>
+                      Revoked
+                    </Button>
+                  ) : (
+                    <Link href={`/certificates/${certificate.id}`}>
+                      <Button type="button" variant="outline" size="sm" fullWidth>
+                        View Certificate
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               );
             })}

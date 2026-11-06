@@ -19,11 +19,12 @@ export function useMyOnboardings() {
   });
 }
 
-export function useOnboarding(persona: LmsPersonaType) {
+export function useOnboarding(persona: LmsPersonaType, enabled = true) {
   return useQuery({
     queryKey: onboardingKeys.detail(persona),
     queryFn: () => onboardingApi.getOnboarding(persona),
-    enabled: Boolean(persona),
+    enabled: Boolean(persona && enabled),
+    retry: false,
   });
 }
 
