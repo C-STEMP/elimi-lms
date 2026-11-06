@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { FiAward, FiX } from "react-icons/fi";
@@ -11,13 +12,13 @@ import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { useEnrollment } from "@/features/enrollments/hooks";
 import { useCourse, useCourseOutline, courseKeys } from "@/features/courses/hooks";
 import { CurriculumList } from "@/features/courses/components/curriculum-list";
-import { useEnrollmentProgress } from "@/features/player/hooks";
+import { useEnrollmentProgress, playerKeys } from "@/features/player/hooks";
 import { useEnrollmentCertificate } from "@/features/certificates/hooks";
-import { useResolveAssets } from "@/features/storage/hooks";
 import { useMe } from "@/features/me/hooks";
 import { useOnboarding } from "@/features/onboarding/hooks";
 import { ItemContentPane } from "@/features/player/components/item-content-pane";
 import type { CourseOutlineItem } from "@/features/courses/types";
+import type { ItemProgressStatus } from "@/shared/types";
 
 export interface CoursePlayerProps {
   enrollmentId: string;
@@ -25,10 +26,6 @@ export interface CoursePlayerProps {
 
 const CertificateBanner: React.FC<{ enrollmentId: string }> = ({ enrollmentId }) => {
   const { data: certificate } = useEnrollmentCertificate(enrollmentId);
-  const { data: resolvedAssets } = useResolveAssets(
-    certificate?.assetId ? [certificate.assetId] : []
-  );
-  const certificateUrl = resolvedAssets?.assets[0]?.url;
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4">
@@ -38,18 +35,15 @@ const CertificateBanner: React.FC<{ enrollmentId: string }> = ({ enrollmentId })
       <div className="flex-1 text-center sm:text-left">
         <h3 className="font-extrabold text-neutral-primary">Course completed!</h3>
         <p className="text-neutral-secondary text-sm">
-          {certificateUrl ? "Your certificate is ready." : "Your certificate is being generated."}
+          {certificate ? "Your certificate is ready." : "Your certificate is being issued."}
         </p>
       </div>
-      {certificateUrl ? (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => window.open(certificateUrl, "_blank", "noopener,noreferrer")}
-        >
-          View Certificate
-        </Button>
+      {certificate ? (
+        <Link href={`/certificates/${certificate.id}`}>
+          <Button type="button" variant="secondary" size="sm">
+            View Certificate
+          </Button>
+        </Link>
       ) : (
         <Link href="/certificates" className="text-primary-solid text-sm font-semibold hover:underline">
           Check certificates
@@ -61,9 +55,11 @@ const CertificateBanner: React.FC<{ enrollmentId: string }> = ({ enrollmentId })
 
 export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const urlItemId = searchParams.get("item");
+
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const pendingAdvanceRef = useRef(false);
 
   const {
     data: enrollment,
@@ -78,57 +74,96 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
   const { data: me } = useMe();
   const { data: onboarding } = useOnboarding("learner");
 
+  // Build a lookup map of item progress from the enrollment progress snapshot
+  const progressMap = useMemo(() => {
+    const map = new Map<string, { status: ItemProgressStatus; locked?: boolean }>();
+    if (progress?.items) {
+      for (const item of progress.items) {
+        map.set(item.itemId, {
+          status: item.status,
+          locked: item.locked,
+        });
+      }
+    }
+    return map;
+  }, [progress]);
+
+  // Merge dynamic progress into the outline modules and items
+  const modulesWithProgress = useMemo(() => {
+    if (!outline?.modules) return [];
+    return outline.modules.map((module) => {
+      const items = module.items.map((item) => {
+        const itemProg = progressMap.get(item.id);
+        return {
+          ...item,
+          progressStatus: itemProg?.status ?? item.progressStatus,
+          locked: itemProg?.locked !== undefined ? itemProg.locked : item.locked,
+        };
+      });
+      return {
+        ...module,
+        items,
+      };
+    });
+  }, [outline, progressMap]);
+
   const flatItems = useMemo(
-    () => (outline?.modules ?? []).flatMap((m) => m.items),
-    [outline]
+    () => modulesWithProgress.flatMap((m) => m.items),
+    [modulesWithProgress]
   );
 
-  const selectedItem: CourseOutlineItem | undefined = flatItems.find((i) => i.id === selectedItemId);
+  const effectiveSelectedId = useMemo(() => {
+    if (selectedItemId && flatItems.some((i) => i.id === selectedItemId)) {
+      return selectedItemId;
+    }
+    if (urlItemId && flatItems.some((i) => i.id === urlItemId)) {
+      return urlItemId;
+    }
+    if (flatItems.length > 0) {
+      const firstAvailable =
+        flatItems.find((i) => !i.locked && i.progressStatus !== "completed") ??
+        flatItems.find((i) => !i.locked) ??
+        flatItems[0];
+      return firstAvailable?.id ?? null;
+    }
+    return null;
+  }, [selectedItemId, urlItemId, flatItems]);
 
-  const currentIndex = flatItems.findIndex((i) => i.id === selectedItemId);
+  const selectedItem: CourseOutlineItem | undefined = flatItems.find((i) => i.id === effectiveSelectedId);
+
+  const currentIndex = flatItems.findIndex((i) => i.id === effectiveSelectedId);
   const prevItem = currentIndex > 0 ? flatItems[currentIndex - 1] : undefined;
   const nextItem =
     currentIndex >= 0 && currentIndex < flatItems.length - 1
       ? flatItems[currentIndex + 1]
       : undefined;
 
+  const selectItem = (id: string) => {
+    setSelectedItemId(id);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("item") !== id) {
+        url.searchParams.set("item", id);
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  };
+
   const handlePrevious = () => {
     if (prevItem) {
-      setSelectedItemId(prevItem.id);
+      selectItem(prevItem.id);
     }
   };
 
   const handleNext = () => {
     if (nextItem && !nextItem.locked) {
-      setSelectedItemId(nextItem.id);
+      selectItem(nextItem.id);
     }
   };
 
-  useEffect(() => {
-    if (!outline || flatItems.length === 0) return;
-
-    if (pendingAdvanceRef.current && selectedItemId) {
-      pendingAdvanceRef.current = false;
-      const curIdx = flatItems.findIndex((i) => i.id === selectedItemId);
-      const next = flatItems[curIdx + 1];
-      if (next && !next.locked) {
-        setSelectedItemId(next.id);
-        return;
-      }
-    }
-
-    if (!selectedItemId || !flatItems.some((i) => i.id === selectedItemId)) {
-      const firstAvailable =
-        flatItems.find((i) => !i.locked && i.progressStatus !== "completed") ??
-        flatItems.find((i) => !i.locked) ??
-        flatItems[0];
-      setSelectedItemId(firstAvailable?.id ?? null);
-    }
-  }, [outline]);
-
   const handleProgress = () => {
-    pendingAdvanceRef.current = true;
     queryClient.invalidateQueries({ queryKey: courseKeys.outline(courseId) });
+    queryClient.invalidateQueries({ queryKey: playerKeys.progress(enrollmentId) });
   };
 
   const learnerId = me?.lmsUserId ?? "";
@@ -161,8 +196,6 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
       </div>
     );
   }
-
-  const percentComplete = progress?.percentComplete ?? enrollment.percentComplete ?? 0;
 
   return (
     <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
@@ -247,13 +280,13 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4">
-                    {outline && outline.modules.length > 0 ? (
+                    {modulesWithProgress.length > 0 ? (
                       <CurriculumList
-                        modules={outline.modules}
+                        modules={modulesWithProgress}
                         mode="interactive"
-                        selectedItemId={selectedItemId ?? undefined}
+                        selectedItemId={effectiveSelectedId ?? undefined}
                         onSelectItem={(item) => {
-                          setSelectedItemId(item.id);
+                          selectItem(item.id);
                         }}
                       />
                     ) : (
@@ -269,4 +302,3 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
     </div>
   );
 };
-

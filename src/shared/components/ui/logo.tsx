@@ -8,6 +8,7 @@ interface LogoProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: number;
   height?: number;
   href?: string;
+  priority?: boolean;
 }
 
 export const Logo: React.FC<LogoProps> = ({
@@ -16,6 +17,7 @@ export const Logo: React.FC<LogoProps> = ({
   width = 141,
   height,
   href = "/",
+  priority = false,
   ...props
 }) => {
   const computedHeight = height ?? Math.round(width / (141 / 80));
@@ -32,8 +34,7 @@ export const Logo: React.FC<LogoProps> = ({
         alt="Elimi Logo"
         width={width}
         height={computedHeight}
-        priority
-        loading="eager"
+        priority={priority}
         className="object-contain w-auto h-auto"
         style={{ width: "auto", height: "auto" }}
       />

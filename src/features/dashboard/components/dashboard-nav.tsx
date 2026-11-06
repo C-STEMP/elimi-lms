@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -11,6 +11,7 @@ import { LogoutModal } from "@/shared/components/ui/logout-modal";
 import { useLogout } from "@/features/auth/hooks";
 import { useOnboarding } from "@/features/onboarding/hooks";
 import { useMeProfile } from "@/features/me/hooks";
+import { tokenStorage } from "@/shared/lib/token-storage";
 
 const navLinkClass =
   "px-4 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap";
@@ -41,8 +42,14 @@ export const DashboardNav: React.FC<DashboardNavProps> = ({
   const router = useRouter();
   const pathname = usePathname();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
-  const { data: onboarding } = useOnboarding("learner");
-  const { data: profile } = useMeProfile();
+  const hasUser = useSyncExternalStore(
+    () => () => {},
+    () => Boolean(tokenStorage.getUser()),
+    () => false
+  );
+
+  const { data: onboarding } = useOnboarding("learner", hasUser);
+  const { data: profile } = useMeProfile(hasUser);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 

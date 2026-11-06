@@ -8,6 +8,7 @@ import {
   FiMaximize2,
   FiMinimize2,
   FiSidebar,
+  FiCheckCircle,
 } from "react-icons/fi";
 import { Button } from "@/shared/components/ui/button";
 import { InlineSpinner } from "@/shared/components/ui/loader";
@@ -15,6 +16,7 @@ import { useToast } from "@/shared/components/ui/toast";
 import {
   useItemLaunch,
   useScormSession,
+  useRecordItemProgress,
 } from "@/features/player/hooks";
 import { ScormPlayer } from "@/features/player/components/scorm-player";
 import { QuizRunner } from "@/features/player/components/quiz-runner";
@@ -71,6 +73,9 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
   const { data: scormSession, isLoading: isLoadingSession } = useScormSession(
     sessionId ?? "",
   );
+
+  const { mutate: recordProgress } = useRecordItemProgress(enrollmentId);
+  const isCompleted = item.progressStatus === "completed";
 
   useEffect(() => {
     if (isLaunchError) {
@@ -205,6 +210,7 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
             session={scormSession}
             learnerId={learnerId}
             learnerName={learnerName}
+            onProgress={onProgress}
           />
         ) : item.type === "video" && launchUrl ? (
           <video
@@ -212,6 +218,24 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
             controls
             playsInline
             className="w-full h-full object-contain bg-black"
+            onEnded={() => {
+              recordProgress(
+                {
+                  itemId: item.id,
+                  input: { status: "completed", percent: 100 },
+                },
+                {
+                  onSuccess: () => {
+                    toast({
+                      type: "success",
+                      title: "Lesson Completed",
+                      description: `You have completed "${item.title}".`,
+                    });
+                    onProgress();
+                  },
+                }
+              );
+            }}
           />
         ) : launchUrl ? (
           <iframe
@@ -224,51 +248,58 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
         )}
       </div>
 
-      {/* Bottom Bar: Previous / Next Navigation */}
-      {(hasPrevious || hasNext) && (
-        <div className="px-4 sm:px-6 py-3 border-t border-border-gray/50 bg-white flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {hasPrevious && onPrevious && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                leftIcon={<FiChevronLeft className="w-4 h-4" />}
-                onClick={onPrevious}
-                title={previousTitle ? `Previous: ${previousTitle}` : "Previous lesson"}
-              >
-                Previous
-              </Button>
-            )}
-
-            {hasNext && onNext && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={isNextLocked}
-                rightIcon={
-                  isNextLocked ? (
-                    <FiLock className="w-3.5 h-3.5 text-neutral-secondary" />
-                  ) : (
-                    <FiChevronRight className="w-4 h-4" />
-                  )
-                }
-                onClick={onNext}
-                title={
-                  isNextLocked
-                    ? "Next item is locked"
-                    : nextTitle
-                    ? `Next: ${nextTitle}`
-                    : "Next lesson"
-                }
-              >
-                Next
-              </Button>
-            )}
-          </div>
+      {/* Bottom Bar: Navigation & Completed State */}
+      <div className="px-4 sm:px-6 py-3 border-t border-border-gray/50 bg-white flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {hasPrevious && onPrevious && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              leftIcon={<FiChevronLeft className="w-4 h-4" />}
+              onClick={onPrevious}
+              title={previousTitle ? `Previous: ${previousTitle}` : "Previous lesson"}
+            >
+              Previous
+            </Button>
+          )}
         </div>
-      )}
+
+        <div className="flex items-center gap-2.5">
+          {isCompleted && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <FiCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+              Completed
+            </span>
+          )}
+
+          {hasNext && onNext && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isNextLocked}
+              rightIcon={
+                isNextLocked ? (
+                  <FiLock className="w-3.5 h-3.5 text-neutral-secondary" />
+                ) : (
+                  <FiChevronRight className="w-4 h-4" />
+                )
+              }
+              onClick={onNext}
+              title={
+                isNextLocked
+                  ? "Next item is locked until you complete this module"
+                  : nextTitle
+                  ? `Next: ${nextTitle}`
+                  : "Next lesson"
+              }
+            >
+              Next
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
