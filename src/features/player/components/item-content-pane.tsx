@@ -199,7 +199,7 @@ export const ItemContentPane: React.FC<ItemContentPaneProps> = ({
         }`}
       >
         {isLaunching ||
-        (item.type === "scorm_package" && (!scormSession || isLoadingSession)) ? (
+        (item.type === "scorm_package" && (!scormSession && isLoadingSession)) ? (
           <div className="flex flex-col items-center justify-center gap-3 text-neutral-secondary p-6">
             <InlineSpinner className="w-8 h-8 text-primary-solid" />
             <span className="text-xs text-neutral-secondary">Loading course player...</span>

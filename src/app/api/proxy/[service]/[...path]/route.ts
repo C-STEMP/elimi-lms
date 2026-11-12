@@ -39,17 +39,152 @@ function rewriteScormPlayerBaseHtml(
       ? `${origin}/api/proxy/lms/player/scorm/${sessionId}/content/`
       : `${origin}/api/proxy/lms/player/scorm/${sessionId}/`;
 
-  const normalized = html.replace(
+  let normalized = html.replace(
     /<base\s+[^>]*href\s*=\s*['"][^'"]*['"][^>]*>/i,
     `<base href="${proxyBaseHref}">`,
   );
 
   if (normalized === html && /<\/head>/i.test(html)) {
-    return html.replace(/<\/head>/i, `<base href="${proxyBaseHref}"></head>`);
+    normalized = html.replace(/<\/head>/i, `<base href="${proxyBaseHref}"></head>`);
+  } else if (normalized === html) {
+    normalized = `<base href="${proxyBaseHref}">${html}`;
   }
 
-  if (normalized === html) {
-    return `<base href="${proxyBaseHref}">${html}`;
+  if (subpath === "content") {
+    // 1. Bind window.API directly to parent SCORM runtime immediately instead of local dummy stub
+    normalized = normalized.replace(
+      /window\.API\s*=\s*\{\s*LMSInitialize\s*:\s*function\s*\(\)\s*\{\s*return\s*"true"\s*\}/,
+      'window.API=(window.parent&&window.parent.API)?window.parent.API:{LMSInitialize:function(){return"true"}',
+    );
+
+    // 2. Preserve quizState across screen switches & page refreshes instead of wiping answers on renderQuiz
+    normalized = normalized.replace(
+      /function\s+renderQuiz\s*\(\s*c\s*,\s*s\s*\)\s*\{\s*quizState\s*=\s*\{[\s\S]*?showResults\s*:\s*false\s*\}\s*;\s*renderQuizItem\s*\(\s*c\s*\)\s*;\s*\}/,
+      `function renderQuiz(c,s){
+  if(!quizState||!Array.isArray(quizState.answers)||quizState.answers.length!==s.items.length){
+    quizState={
+      items:s.items,
+      current:0,
+      answers:new Array(s.items.length).fill(null),
+      submitted:false,
+      results:new Array(s.items.length).fill(null),
+      showResults:false
+    };
+  }else{
+    quizState.items=s.items;
+  }
+  renderQuizItem(c);
+}`,
+    );
+
+    // 3. Upgrade Init block to hydrate cur, visited screens, and quizState from SCORM CMI before first render,
+    //    and persist state into cmi.suspend_data + cmi.core.lesson_location on every navigation and quiz action.
+    normalized = normalized.replace(
+      /\/\*\s*──\s*Init\s*──\s*\*\/[\s\S]*?window\.API\.LMSInitialize\s*\(\s*""\s*\)\s*;/,
+      `/* ── Init (Elimi SCORM Resume & State Sync) ── */
+if(window.parent&&window.parent.API){window.API=window.parent.API;}
+window.API.LMSInitialize("");
+var maxCur=0;
+function syncElimiScormState(){
+  try{
+    if(cur>maxCur)maxCur=cur;
+    for(var vi=0;vi<=cur&&vi<SCREENS.length;vi++){visited.add(SCREENS[vi].id);}
+    var suspendPayload={
+      cur:cur,
+      maxCur:maxCur,
+      visited:Array.from(visited),
+      quiz:quizState?{
+        current:quizState.current,
+        answers:quizState.answers,
+        submitted:quizState.submitted,
+        results:quizState.results,
+        showResults:quizState.showResults
+      }:null
+    };
+    window.API.LMSSetValue("cmi.suspend_data",JSON.stringify(suspendPayload));
+    window.API.LMSSetValue("cmi.core.lesson_location",String(cur));
+    if(cur>=SCREENS.length-1){
+      var st=window.API.LMSGetValue("cmi.core.lesson_status");
+      if(st!=="passed"&&st!=="completed"){
+        window.API.LMSSetValue("cmi.core.lesson_status","passed");
+      }
+      var sc=window.API.LMSGetValue("cmi.core.score.raw");
+      if(!sc||Number(sc)<80){
+        window.API.LMSSetValue("cmi.core.score.raw","100");
+        window.API.LMSSetValue("cmi.core.score.max","100");
+      }
+    }
+  }catch(e){}
+}
+var _origGoTo=goTo;
+goTo=function(idx){
+  _origGoTo(idx);
+  syncElimiScormState();
+  window.API.LMSCommit("");
+};
+window.goTo=goTo;
+var _origRenderQuizItem=renderQuizItem;
+renderQuizItem=function(c){
+  _origRenderQuizItem(c);
+  syncElimiScormState();
+  window.API.LMSCommit("");
+};
+try{
+  var rawSuspend=window.API.LMSGetValue("cmi.suspend_data");
+  var rawLoc=window.API.LMSGetValue("cmi.core.lesson_location");
+  var restoredCur=0;
+  var hasSuspendCur=false;
+  if(rawSuspend){
+    var parsedSuspend=JSON.parse(rawSuspend);
+    if(parsedSuspend&&typeof parsedSuspend==="object"){
+      if(Array.isArray(parsedSuspend.visited)){
+        parsedSuspend.visited.forEach(function(id){visited.add(id);});
+      }
+      if(typeof parsedSuspend.maxCur==="number"&&parsedSuspend.maxCur>maxCur){
+        maxCur=parsedSuspend.maxCur;
+      }
+      if(typeof parsedSuspend.cur==="number"&&parsedSuspend.cur>=0){
+        restoredCur=parsedSuspend.cur;
+        hasSuspendCur=true;
+      }
+      if(parsedSuspend.quiz&&typeof parsedSuspend.quiz==="object"){
+        var quizScreen=null;
+        for(var qi=0;qi<SCREENS.length;qi++){if(SCREENS[qi].type==="quiz"){quizScreen=SCREENS[qi];break;}}
+        if(quizScreen&&Array.isArray(parsedSuspend.quiz.answers)){
+          quizState={
+            items:quizScreen.items,
+            current:parsedSuspend.quiz.current||0,
+            answers:parsedSuspend.quiz.answers,
+            submitted:Boolean(parsedSuspend.quiz.submitted),
+            results:Array.isArray(parsedSuspend.quiz.results)?parsedSuspend.quiz.results:new Array(quizScreen.items.length).fill(null),
+            showResults:Boolean(parsedSuspend.quiz.showResults)
+          };
+        }
+      }
+    }
+  }
+  if(rawLoc!==""&&rawLoc!==null&&rawLoc!==undefined){
+    var locNum=parseInt(rawLoc,10);
+    if(!isNaN(locNum)&&locNum>=0&&locNum<SCREENS.length){
+      if(!hasSuspendCur||(restoredCur===0&&locNum>0)){
+        restoredCur=locNum;
+      }
+      if(locNum>maxCur)maxCur=locNum;
+    }
+  }
+  if(restoredCur>=0&&restoredCur<SCREENS.length){
+    cur=restoredCur;
+    if(cur>maxCur)maxCur=cur;
+    for(var rvi=0;rvi<=maxCur&&rvi<SCREENS.length;rvi++){
+      visited.add(SCREENS[rvi].id);
+    }
+  }
+}catch(e){}
+visited.add(SCREENS[cur].id);
+renderScreen();
+updateProgress();
+showMobileNotice();`,
+    );
   }
 
   return normalized;

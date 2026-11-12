@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -119,6 +119,16 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
     if (urlItemId && flatItems.some((i) => i.id === urlItemId)) {
       return urlItemId;
     }
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(`elimi_last_item_${enrollmentId}`);
+        if (saved && flatItems.some((i) => i.id === saved && !i.locked)) {
+          return saved;
+        }
+      } catch {
+        // Ignore storage error
+      }
+    }
     if (flatItems.length > 0) {
       const firstAvailable =
         flatItems.find((i) => !i.locked && i.progressStatus !== "completed") ??
@@ -127,7 +137,22 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
       return firstAvailable?.id ?? null;
     }
     return null;
-  }, [selectedItemId, urlItemId, flatItems]);
+  }, [selectedItemId, urlItemId, flatItems, enrollmentId]);
+
+  useEffect(() => {
+    if (effectiveSelectedId && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`elimi_last_item_${enrollmentId}`, effectiveSelectedId);
+      } catch {
+        // Ignore quota error
+      }
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("item") !== effectiveSelectedId) {
+        url.searchParams.set("item", effectiveSelectedId);
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  }, [effectiveSelectedId, enrollmentId]);
 
   const selectedItem: CourseOutlineItem | undefined = flatItems.find((i) => i.id === effectiveSelectedId);
 
@@ -172,7 +197,9 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
     ? [personalDetails.firstName, personalDetails.lastName].filter(Boolean).join(" ")
     : "Learner";
 
-  const isCompleted = progress?.enrollmentStatus === "completed";
+  const isCompleted =
+    progress?.enrollmentStatus === "completed" ||
+    enrollment?.status === "completed";
 
   if (isEnrollmentError) {
     return (

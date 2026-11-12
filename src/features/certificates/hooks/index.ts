@@ -33,7 +33,8 @@ export function useEnrollmentCertificate(enrollmentId: string) {
     queryKey: certificateKeys.forEnrollment(enrollmentId),
     queryFn: () => certificatesApi.getEnrollmentCertificate(enrollmentId),
     enabled: Boolean(enrollmentId),
-    retry: 1,
-    refetchInterval: (query) => (query.state.data?.assetId ? false : 4000),
+    retry: 5,
+    retryDelay: 3000,
+    refetchInterval: (query) => (query.state.data?.id ? false : 4000),
   });
 }
