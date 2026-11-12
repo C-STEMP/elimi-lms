@@ -136,7 +136,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const labelText = getLabelText(label);
 
   const isDob = minAge !== undefined || name === "dob" || name === "dateOfBirth" || /birth|dob/i.test(labelText);
-  const effectiveMinAge = minAge !== undefined ? minAge : isDob ? 18 : undefined;
+  const effectiveMinAge = minAge !== undefined ? minAge : isDob ? 14 : undefined;
 
   const effectiveMaxDate: Date | undefined = maxDate
     ? maxDate
