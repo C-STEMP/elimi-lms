@@ -263,7 +263,8 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
               label="Date of Birth"
               name="dob"
               placeholder="dd/mm/yyyy"
-              maxYear={new Date().getFullYear() - 13}
+              minAge={14}
+              maxYear={new Date().getFullYear() - 14}
               value={form.dob}
               onChange={(val) => update("dob", val)}
               disabled={isLoadingDraft}
