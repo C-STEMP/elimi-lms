@@ -35,8 +35,9 @@ export function useScormSession(sessionId: string) {
     queryKey: playerKeys.scormSession(sessionId),
     queryFn: () => playerApi.getScormSession(sessionId),
     enabled: Boolean(sessionId),
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -72,14 +73,17 @@ export function useRecordItemProgress(enrollmentId: string) {
       itemId: string;
       input: ItemProgressWrite;
     }) => playerApi.recordItemProgress(enrollmentId, itemId, input),
-    onSuccess: () => {
+    onSuccess: (snapshot) => {
+      if (snapshot && typeof snapshot === "object" && "enrollmentStatus" in snapshot) {
+        queryClient.setQueryData(playerKeys.progress(enrollmentId), snapshot);
+      }
       queryClient.invalidateQueries({
         queryKey: playerKeys.progress(enrollmentId),
       });
       queryClient.invalidateQueries({
         queryKey: enrollmentKeys.detail(enrollmentId),
       });
-      queryClient.invalidateQueries({ queryKey: certificateKeys.mineLists() });
+      queryClient.invalidateQueries({ queryKey: certificateKeys.all });
       queryClient.invalidateQueries({ queryKey: courseKeys.all });
     },
   });
@@ -95,14 +99,17 @@ export function useCommitScormCmi(enrollmentId: string) {
       sessionId: string;
       input: ScormCmiCommit;
     }) => playerApi.commitScormCmi(sessionId, input),
-    onSuccess: () => {
+    onSuccess: (snapshot) => {
+      if (snapshot && typeof snapshot === "object" && "enrollmentStatus" in snapshot) {
+        queryClient.setQueryData(playerKeys.progress(enrollmentId), snapshot);
+      }
       queryClient.invalidateQueries({
         queryKey: playerKeys.progress(enrollmentId),
       });
       queryClient.invalidateQueries({
         queryKey: enrollmentKeys.detail(enrollmentId),
       });
-      queryClient.invalidateQueries({ queryKey: certificateKeys.mineLists() });
+      queryClient.invalidateQueries({ queryKey: certificateKeys.all });
       queryClient.invalidateQueries({ queryKey: courseKeys.all });
     },
   });
