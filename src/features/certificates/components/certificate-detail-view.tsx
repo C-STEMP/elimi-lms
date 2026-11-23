@@ -8,6 +8,7 @@ import { useCourse } from "@/features/courses/hooks";
 import { useMeProfile } from "@/features/me/hooks";
 import { useOnboarding } from "@/features/onboarding/hooks";
 import { CertificateTemplate } from "@/features/certificates/components/certificate-template";
+import { NextUnitAction } from "@/features/courses/components/next-unit-card";
 import type { CertificateRenderData } from "@/features/certificates/types";
 
 export const CertificateDetailView: React.FC<{ certificateId: string }> = ({ certificateId }) => {
@@ -43,7 +44,10 @@ export const CertificateDetailView: React.FC<{ certificateId: string }> = ({ cer
       {isLoading || isLoadingProfile ? (
         <InlineSpinner className="flex-1" />
       ) : (
-        <CertificateTemplate data={data} />
+        <>
+          <NextUnitAction course={course} variant="banner" />
+          <CertificateTemplate data={data} />
+        </>
       )}
     </div>
   );

@@ -17,14 +17,18 @@ import { useEnrollmentCertificate } from "@/features/certificates/hooks";
 import { useMe } from "@/features/me/hooks";
 import { useOnboarding } from "@/features/onboarding/hooks";
 import { ItemContentPane } from "@/features/player/components/item-content-pane";
-import type { CourseOutlineItem } from "@/features/courses/types";
+import { NextUnitAction } from "@/features/courses/components/next-unit-card";
+import type { CourseDetail, CourseOutlineItem } from "@/features/courses/types";
 import type { ItemProgressStatus } from "@/shared/types";
 
 export interface CoursePlayerProps {
   enrollmentId: string;
 }
 
-const CertificateBanner: React.FC<{ enrollmentId: string }> = ({ enrollmentId }) => {
+const CertificateBanner: React.FC<{
+  enrollmentId: string;
+  course?: CourseDetail | null;
+}> = ({ enrollmentId, course }) => {
   const { data: certificate } = useEnrollmentCertificate(enrollmentId);
 
   return (
@@ -33,22 +37,27 @@ const CertificateBanner: React.FC<{ enrollmentId: string }> = ({ enrollmentId })
         <FiAward className="w-6 h-6 text-green-700" />
       </div>
       <div className="flex-1 text-center sm:text-left">
-        <h3 className="font-extrabold text-neutral-primary">Course completed!</h3>
+        <h3 className="font-extrabold text-neutral-primary">Unit completed!</h3>
         <p className="text-neutral-secondary text-sm">
-          {certificate ? "Your certificate is ready." : "Your certificate is being issued."}
+          {certificate
+            ? "Your certificate is ready. View it or move straight to the next unit."
+            : "Your certificate is being issued. You can already continue to the next unit."}
         </p>
       </div>
-      {certificate ? (
-        <Link href={`/certificates/${certificate.id}`}>
-          <Button type="button" variant="secondary" size="sm">
-            View Certificate
-          </Button>
-        </Link>
-      ) : (
-        <Link href="/certificates" className="text-primary-solid text-sm font-semibold hover:underline">
-          Check certificates
-        </Link>
-      )}
+      <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+        {certificate ? (
+          <Link href={`/certificates/${certificate.id}`}>
+            <Button type="button" variant="secondary" size="sm">
+              View Certificate
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/certificates" className="text-primary-solid text-sm font-semibold hover:underline px-2">
+            Check certificates
+          </Link>
+        )}
+        <NextUnitAction course={course} variant="inline" />
+      </div>
     </div>
   );
 };
@@ -238,7 +247,7 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 flex flex-col gap-4"
       >
-        {isCompleted && <CertificateBanner enrollmentId={enrollmentId} />}
+        {isCompleted && <CertificateBanner enrollmentId={enrollmentId} course={course} />}
 
         {/* Main Course Content Stage - takes whole container by default, outline drawer constrained inside */}
         <main className="bg-white border border-border-gray/70 rounded-2xl shadow-sm w-full flex-1 min-w-0 overflow-hidden flex flex-col relative">

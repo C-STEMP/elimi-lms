@@ -30,10 +30,11 @@ export const courseKeys = {
 
 // Catalogue
 
-export function useCourses(params?: CoursesQuery) {
+export function useCourses(params?: CoursesQuery, enabled = true) {
   return useQuery({
     queryKey: courseKeys.list(params),
     queryFn: () => coursesApi.getCourses(params),
+    enabled,
   });
 }
 

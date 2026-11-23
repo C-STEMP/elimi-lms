@@ -7,6 +7,7 @@ import { FiAlertCircle, FiArrowRight } from "react-icons/fi";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { LearningPromoCard } from "@/features/dashboard/components/learning-promo-card";
 import { StatsGrid } from "@/features/dashboard/components/stats-grid";
+import { ContinueLearning } from "@/features/dashboard/components/continue-learning";
 import { RecommendedCourses } from "@/features/dashboard/components/recommended-courses";
 import { useOnboarding } from "@/features/onboarding/hooks";
 
@@ -58,6 +59,8 @@ export const DashboardView: React.FC = () => {
             <StatsGrid />
           </div>
         </div>
+
+        <ContinueLearning />
 
         <RecommendedCourses />
       </motion.div>
