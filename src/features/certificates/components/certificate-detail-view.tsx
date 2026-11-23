@@ -44,10 +44,11 @@ export const CertificateDetailView: React.FC<{ certificateId: string }> = ({ cer
       {isLoading || isLoadingProfile ? (
         <InlineSpinner className="flex-1" />
       ) : (
-        <>
-          <NextUnitAction course={course} variant="banner" />
-          <CertificateTemplate data={data} />
-        </>
+        <CertificateTemplate
+          data={data}
+          headerAction={<NextUnitAction course={course} variant="inline" />}
+          footerSlot={<NextUnitAction course={course} variant="banner" />}
+        />
       )}
     </div>
   );

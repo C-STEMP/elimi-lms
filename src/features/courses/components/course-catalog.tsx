@@ -30,6 +30,7 @@ import { useCreateEnrollment, useMyEnrollments } from "@/features/enrollments/ho
 import { useResolveAssets } from "@/features/storage/hooks";
 import { formatMoney, isFree } from "@/shared/lib/money";
 import { useToast } from "@/shared/components/ui/toast";
+import { CourseArtwork } from "@/shared/components/ui/course-artwork";
 import { CatalogCourseCard } from "@/features/courses/components/catalog-course-card";
 import type { CourseSummary } from "@/features/courses/types";
 
@@ -136,6 +137,17 @@ export const CourseCatalog: React.FC = () => {
         router.push(`/learn/${enrollment.id}`);
       },
       onError: (error) => {
+        if (
+          error.status === 401 ||
+          error.message?.toLowerCase().includes("authentication is required")
+        ) {
+          const currentPath =
+            typeof window !== "undefined"
+              ? `${window.location.pathname}${window.location.search}`
+              : "/courses";
+          router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+          return;
+        }
         if (error.status === 403 && error.code === "lms.onboarding.incomplete") {
           toast({
             type: "error",
@@ -433,22 +445,18 @@ export const CourseCatalog: React.FC = () => {
                       onClick={() => navigateCatalog(trade.id, null)}
                       className="text-left bg-white border border-border-gray/60 hover:border-primary-solid/40 rounded-2xl overflow-hidden flex flex-col shadow-2xs hover:shadow-md transition-all group cursor-pointer"
                     >
-                      <div className="relative h-36 bg-linear-to-br from-primary/15 via-primary/10 to-secondary/20 flex items-center justify-center overflow-hidden">
-                        {tradeImg ? (
-                          <img
-                            src={tradeImg}
-                            alt={trade.name}
-                            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                          />
-                        ) : (
-                          <FiLayers className="w-10 h-10 text-primary-solid/35" />
-                        )}
+                      <CourseArtwork
+                        title={trade.name}
+                        description={trade.description}
+                        thumbnailUrl={tradeImg}
+                        className="h-36"
+                      >
                         {trade.sector?.name && (
-                          <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-white/95 text-neutral-primary text-[10px] font-bold shadow-xs">
+                          <span className="absolute top-3 left-3 z-10 px-2.5 py-0.5 rounded-full bg-white/95 text-neutral-primary text-[10px] font-bold shadow-xs">
                             {trade.sector.name}
                           </span>
                         )}
-                      </div>
+                      </CourseArtwork>
 
                       <div className="p-5 flex flex-col gap-3 flex-1">
                         <div className="flex flex-col gap-1 flex-1">
@@ -635,219 +643,235 @@ export const CourseCatalog: React.FC = () => {
             )}
           </div>
         ) : (
-          /* VIEW D: STEP 3 — ORDERED UNITS / COURSES UNDER SELECTED LEVEL */
-          <div className="flex flex-col gap-5">
-            <div className="bg-white border border-border-gray/60 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full bg-primary-solid text-white text-[11px] font-bold">
-                    {selectedTradeName}
-                  </span>
-                  {selectedLevel && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">
-                      Level {selectedLevel.level}
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-neutral-primary mt-0.5">
-                  {selectedLevel
-                    ? `${selectedTradeName} — Level ${selectedLevel.level} Learning Path`
-                    : `${selectedTradeName} Units`}
-                </h2>
-                <p className="text-xs text-neutral-secondary">
-                  Complete each unit in order. Once you finish a unit, you&apos;ll be guided directly to the next one.
-                </p>
-              </div>
+          /* VIEW D: STEP 3 — CLEAN CURRICULUM LIST FOR SELECTED LEVEL */
+          (() => {
+            const totalUnits = orderedLevelCourses.length;
+            const completionPct =
+              totalUnits > 0 ? Math.round((levelCompletedCount / totalUnits) * 100) : 0;
 
-              <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
-                <span className="text-xs font-bold text-text-dark">
-                  {levelCompletedCount} of {orderedLevelCourses.length} units completed
-                </span>
-                <div className="w-44 h-2 rounded-full bg-input-bg overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      orderedLevelCourses.length > 0 &&
-                      levelCompletedCount === orderedLevelCourses.length
-                        ? "bg-emerald-500"
-                        : "bg-secondary"
-                    }`}
-                    style={{
-                      width: `${
-                        orderedLevelCourses.length > 0
-                          ? Math.round((levelCompletedCount / orderedLevelCourses.length) * 100)
-                          : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigateCatalog(selectedTradeId, null)}
-                  className="text-xs font-bold text-primary-solid hover:underline inline-flex items-center gap-1 cursor-pointer mt-0.5"
-                >
-                  <FiArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Levels</span>
-                </button>
-              </div>
-            </div>
+            // Pick a single focal "next up" unit: prefer an active in-progress enrollment,
+            // otherwise the first uncompleted unit in sequence.
+            const nextFocalCourseId =
+              orderedLevelCourses.find(({ course }) => {
+                const e = enrollmentByCourseId.get(course.id);
+                return e && e.status === "active" && e.percentComplete > 0;
+              })?.course.id ??
+              orderedLevelCourses.find(({ course }) => {
+                const e = enrollmentByCourseId.get(course.id);
+                return e?.status !== "completed";
+              })?.course.id ??
+              null;
 
-            {isLoadingTradeCourses || isLoadingTradeDetail ? (
-              <InlineSpinner className="py-16" />
-            ) : orderedLevelCourses.length === 0 ? (
-              <div className="bg-white border border-border-gray/60 rounded-2xl p-10 text-center">
-                <p className="text-neutral-primary font-semibold">
-                  No published courses for this level yet
-                </p>
-                <p className="text-neutral-secondary text-xs mt-1">
-                  Try another level or check back soon.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3.5">
-                {orderedLevelCourses.map(({ course, unit, stepNumber }) => {
-                  const enrollment = enrollmentByCourseId.get(course.id);
-                  const isCompleted = enrollment?.status === "completed";
-                  const isEnrolled = Boolean(enrollment);
-                  const free = isFree(course.price);
-                  const thumbnailUrl = course.thumbnailAssetId
-                    ? assetUrlById.get(course.thumbnailAssetId)
-                    : undefined;
-
-                  return (
-                    <div
-                      key={course.id}
-                      className={`bg-white border rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center gap-4 shadow-2xs hover:shadow-md transition-all ${
-                        isCompleted
-                          ? "border-emerald-200 bg-emerald-50/20"
-                          : isEnrolled
-                            ? "border-secondary/60"
-                            : "border-border-gray/60 hover:border-primary-solid/35"
-                      }`}
-                    >
-                      {/* Step number & Thumbnail */}
-                      <div className="flex items-center gap-3.5 shrink-0">
-                        <div
-                          className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-sm shrink-0 ${
-                            isCompleted
-                              ? "bg-emerald-600 text-white"
-                              : isEnrolled
-                                ? "bg-secondary text-white"
-                                : "bg-primary-solid/10 text-primary-solid"
-                          }`}
-                        >
-                          {isCompleted ? <FiCheckCircle className="w-5 h-5" /> : stepNumber}
-                        </div>
-
-                        <div className="w-24 h-16 rounded-xl overflow-hidden bg-linear-to-br from-primary/15 to-secondary/20 flex items-center justify-center shrink-0">
-                          {thumbnailUrl ? (
-                            <img
-                              src={thumbnailUrl}
-                              alt={course.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <FiBookOpen className="w-6 h-6 text-primary-solid/40" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Course Info */}
-                      <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[11px] font-extrabold uppercase tracking-wide text-primary-solid bg-primary-solid/10 px-2 py-0.5 rounded-md">
-                            Unit {stepNumber}
-                            {unit?.referenceNumber ? ` • ${unit.referenceNumber}` : ""}
-                          </span>
-                          <span
-                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                              free
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-input-bg text-text-dark"
-                            }`}
-                          >
-                            {free ? "Free" : formatMoney(course.price)}
-                          </span>
-                          {isCompleted && (
-                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                              Completed
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="text-sm sm:text-base font-bold text-text-dark leading-snug">
-                          {course.title}
-                        </h3>
-                        {course.description && (
-                          <p className="text-xs text-neutral-secondary line-clamp-2">
-                            {course.description}
-                          </p>
-                        )}
-
-                        {isEnrolled && (
-                          <div className="flex items-center gap-2.5 mt-1 max-w-xs">
-                            <div className="h-1.5 flex-1 rounded-full bg-input-bg overflow-hidden">
+            return (
+              <div className="flex flex-col gap-6 max-w-4xl w-full">
+                {/* Clean, unboxed header */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-gray-200/80">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-2xl font-bold text-neutral-primary tracking-tight">
+                      {selectedLevel
+                        ? `${selectedTradeName} — Level ${selectedLevel.level}`
+                        : selectedTradeName}
+                    </h2>
+                    <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-secondary">
+                      <span>
+                        {totalUnits} {totalUnits === 1 ? "unit" : "units"}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>{levelCompletedCount} completed</span>
+                      {totalUnits > 0 && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <div className="inline-flex items-center gap-2">
+                            <div className="w-20 h-1.5 rounded-full bg-gray-200 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${
-                                  isCompleted ? "bg-emerald-500" : "bg-secondary"
+                                className={`h-full rounded-full transition-all ${
+                                  completionPct === 100 ? "bg-emerald-600" : "bg-primary-solid"
                                 }`}
-                                style={{
-                                  width: `${Math.min(100, Math.round(enrollment?.percentComplete ?? 0))}%`,
-                                }}
+                                style={{ width: `${completionPct}%` }}
                               />
                             </div>
-                            <span className="text-[11px] font-bold text-neutral-secondary">
-                              {Math.min(100, Math.round(enrollment?.percentComplete ?? 0))}%
+                            <span className="text-xs font-medium text-neutral-primary tabular-nums">
+                              {completionPct}%
                             </span>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Action CTA */}
-                      <div className="flex items-center gap-2 shrink-0 md:ml-2">
-                        {isEnrolled && enrollment ? (
-                          <Link href={`/learn/${enrollment.id}`} className="w-full md:w-auto">
-                            <Button
-                              type="button"
-                              variant={isCompleted ? "outline" : "secondary"}
-                              size="sm"
-                              fullWidth
-                              leftIcon={<FiPlayCircle className="w-4 h-4" />}
-                            >
-                              {isCompleted ? "Review Unit" : "Continue Unit"}
-                            </Button>
-                          </Link>
-                        ) : free ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            loading={isEnrolling && enrollingCourseId === course.id}
-                            onClick={() => handleEnrollFree(course.id)}
-                            rightIcon={<FiArrowRight className="w-3.5 h-3.5" />}
-                            className="w-full md:w-auto"
-                          >
-                            Start Unit Free
-                          </Button>
-                        ) : (
-                          <Link href={`/courses/${course.id}`} className="w-full md:w-auto">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              fullWidth
-                              rightIcon={<FiArrowRight className="w-3.5 h-3.5" />}
-                            >
-                              View &amp; Enroll
-                            </Button>
-                          </Link>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
-                  );
-                })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateCatalog(selectedTradeId, null)}
+                    className="self-start sm:self-auto text-xs font-medium text-neutral-secondary hover:text-neutral-primary inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <FiArrowLeft className="w-3.5 h-3.5" />
+                    <span>All levels</span>
+                  </button>
+                </div>
+
+                {isLoadingTradeCourses || isLoadingTradeDetail ? (
+                  <InlineSpinner className="py-16" />
+                ) : totalUnits === 0 ? (
+                  <div className="bg-white border border-gray-200/80 rounded-xl p-10 text-center">
+                    <p className="text-neutral-primary font-semibold text-sm">
+                      No published units for this level yet
+                    </p>
+                    <p className="text-neutral-secondary text-xs mt-1">
+                      Try another level or check back soon.
+                    </p>
+                  </div>
+                ) : (
+                  <ol className="bg-white border border-gray-200/80 rounded-xl divide-y divide-gray-100 overflow-hidden">
+                    {orderedLevelCourses.map(({ course, unit, stepNumber }) => {
+                      const enrollment = enrollmentByCourseId.get(course.id);
+                      const isCompleted = enrollment?.status === "completed";
+                      const isEnrolled = Boolean(enrollment);
+                      const percent = Math.min(
+                        100,
+                        Math.max(0, Math.round(enrollment?.percentComplete ?? 0)),
+                      );
+                      const isFocal = course.id === nextFocalCourseId;
+                      const free = isFree(course.price);
+                      const thumbnailUrl = course.thumbnailAssetId
+                        ? assetUrlById.get(course.thumbnailAssetId)
+                        : undefined;
+                      const isBoilerplateDesc = Boolean(
+                        course.description &&
+                          /^Competency\s+unit\s+/i.test(course.description.trim()),
+                      );
+                      const unitHref =
+                        isEnrolled && enrollment
+                          ? `/learn/${enrollment.id}`
+                          : `/courses/${course.id}`;
+
+                      return (
+                        <li
+                          key={course.id}
+                          className={`px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-5 transition-colors ${
+                            isFocal ? "bg-[#fcfbfa]" : "hover:bg-gray-50/70"
+                          }`}
+                        >
+                          {/* Minimal step index / completion state */}
+                          <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                            <div className="w-7 flex items-center justify-center shrink-0">
+                              {isCompleted ? (
+                                <FiCheckCircle
+                                  className="w-5 h-5 text-emerald-600"
+                                  aria-label="Completed"
+                                />
+                              ) : (
+                                <span
+                                  className={`text-xs font-semibold tabular-nums ${
+                                    isFocal
+                                      ? "w-7 h-7 rounded-full bg-primary-solid text-white flex items-center justify-center"
+                                      : "text-neutral-secondary"
+                                  }`}
+                                >
+                                  {String(stepNumber).padStart(2, "0")}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Only render thumbnail if a real uploaded image exists */}
+                            {thumbnailUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element -- resolved external asset URL
+                              <img
+                                src={thumbnailUrl}
+                                alt=""
+                                className="w-16 h-11 rounded-lg object-cover border border-gray-200/70 shrink-0 hidden sm:block"
+                              />
+                            )}
+
+                            {/* Title & quiet metadata */}
+                            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                              <Link
+                                href={unitHref}
+                                className="text-sm sm:text-[15px] font-semibold text-neutral-primary hover:text-primary-solid transition-colors leading-snug"
+                              >
+                                {course.title}
+                              </Link>
+
+                              <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-neutral-secondary">
+                                {unit?.referenceNumber && (
+                                  <span className="font-mono text-[11px] text-neutral-secondary/90">
+                                    {unit.referenceNumber}
+                                  </span>
+                                )}
+                                {unit?.referenceNumber && <span aria-hidden="true">·</span>}
+                                <span>{free ? "Free" : formatMoney(course.price)}</span>
+                                {isCompleted && (
+                                  <>
+                                    <span aria-hidden="true">·</span>
+                                    <span className="text-emerald-700 font-medium">Completed</span>
+                                  </>
+                                )}
+                                {!isCompleted && isEnrolled && percent > 0 && (
+                                  <>
+                                    <span aria-hidden="true">·</span>
+                                    <span className="text-neutral-primary font-medium tabular-nums">
+                                      {percent}% complete
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+
+                              {course.description && !isBoilerplateDesc && (
+                                <p className="text-xs text-neutral-secondary/90 line-clamp-1 mt-0.5">
+                                  {course.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Restrained row action: only the focal next-up unit gets a solid CTA */}
+                          <div className="flex items-center sm:justify-end pl-10 sm:pl-0 shrink-0">
+                            {isCompleted && enrollment ? (
+                              <Link
+                                href={`/learn/${enrollment.id}`}
+                                className="text-xs font-medium text-neutral-secondary hover:text-neutral-primary px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                              >
+                                Review
+                              </Link>
+                            ) : isEnrolled && enrollment ? (
+                              <Link href={`/learn/${enrollment.id}`}>
+                                <Button
+                                  type="button"
+                                  variant={isFocal ? "primary" : "outline"}
+                                  size="sm"
+                                >
+                                  {percent > 0 ? "Continue" : "Start"}
+                                </Button>
+                              </Link>
+                            ) : free ? (
+                              <Button
+                                type="button"
+                                variant={isFocal ? "primary" : "outline"}
+                                size="sm"
+                                loading={isEnrolling && enrollingCourseId === course.id}
+                                onClick={() => handleEnrollFree(course.id)}
+                              >
+                                Start
+                              </Button>
+                            ) : (
+                              <Link href={`/courses/${course.id}`}>
+                                <Button
+                                  type="button"
+                                  variant={isFocal ? "primary" : "outline"}
+                                  size="sm"
+                                >
+                                  View course
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()
         )}
       </motion.div>
     </div>

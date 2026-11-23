@@ -11,6 +11,11 @@ import { useToast } from "@/shared/components/ui/toast";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { useCourse, useCourseOutline } from "@/features/courses/hooks";
 import { CurriculumList } from "@/features/courses/components/curriculum-list";
+import {
+  CourseArtwork,
+  getCourseVisualTheme,
+  parseCourseDescriptionMeta,
+} from "@/shared/components/ui/course-artwork";
 import { useMyEnrollments, useCreateEnrollment } from "@/features/enrollments/hooks";
 import { checkoutEnrollment } from "@/features/enrollments/api";
 import { checkoutStorage } from "@/shared/lib/checkout-storage";
@@ -78,6 +83,17 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({ courseId }) 
         proceedToCheckout(enrollment.id);
       },
       onError: (error) => {
+        if (
+          error.status === 401 ||
+          error.message?.toLowerCase().includes("authentication is required")
+        ) {
+          const currentPath =
+            typeof window !== "undefined"
+              ? `${window.location.pathname}${window.location.search}`
+              : `/courses/${courseId}`;
+          router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+          return;
+        }
         if (error.status === 403 && error.code === "lms.onboarding.incomplete") {
           toast({
             type: "error",
@@ -122,14 +138,31 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({ courseId }) 
   const free = isFree(course.price);
   const busy = isEnrolling || isRedirecting;
   const isPendingPayment = existingEnrollment?.status === "pending";
+  const totalOutlineItems = (outline?.modules ?? []).reduce(
+    (sum, mod) => sum + (mod.items?.length ?? 0),
+    0,
+  );
+  const isCourseEmpty = !isLoadingOutline && totalOutlineItems === 0;
+  const meta = parseCourseDescriptionMeta(course.description);
+  const theme = getCourseVisualTheme(course.title, course.description);
 
-  let primaryLabel = free ? "Enroll Free" : `Buy Now — ${formatMoney(course.price)}`;
+  let primaryLabel = isCourseEmpty
+    ? "Content Coming Soon"
+    : free
+      ? "Enroll Free"
+      : `Buy Now — ${formatMoney(course.price)}`;
   if (existingEnrollment) {
-    primaryLabel = isPendingPayment ? "Complete Payment" : "Continue Learning";
+    primaryLabel = isPendingPayment
+      ? "Complete Payment"
+      : existingEnrollment.status === "completed"
+        ? "Review Course"
+        : (existingEnrollment.percentComplete ?? 0) === 0
+          ? "Start Course"
+          : "Continue Learning";
   }
 
   return (
-    <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
+    <div className="w-full min-h-screen bg-[#f8f7f5] flex flex-col">
       <DashboardNav backHref="/courses" backTitle="Courses" rightAction={null} />
 
       <motion.div
@@ -138,26 +171,38 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({ courseId }) 
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col gap-6"
       >
-        <div className="bg-white border border-border-gray/60 rounded-2xl overflow-hidden">
-          <div className="relative h-48 sm:h-64 bg-linear-to-br from-primary/15 to-secondary/20 flex items-center justify-center">
-            {thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- resolved external asset URL
-              <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <FiBookOpen className="w-12 h-12 text-primary-solid/30" />
-            )}
-          </div>
+        <div className="bg-white border border-border-gray/55 rounded-2xl overflow-hidden shadow-xs">
+          <CourseArtwork
+            title={course.title}
+            description={course.description}
+            thumbnailUrl={thumbnailUrl}
+            className="h-44 sm:h-56"
+          />
 
           <div className="p-5 sm:p-8 flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="flex-1 flex flex-col gap-2">
-                <span
-                  className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                    free ? "bg-green-100 text-green-800" : "bg-primary-solid/10 text-primary-solid"
-                  }`}
-                >
-                  {free ? "Free" : "Paid"}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                      free ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-primary-solid/10 text-primary-solid"
+                    }`}
+                  >
+                    {free ? "Free" : "Paid"}
+                  </span>
+                  {meta.tradeLabel && (
+                    <span
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${theme.badgeBg} ${theme.badgeText}`}
+                    >
+                      {meta.tradeLabel}
+                    </span>
+                  )}
+                  {meta.levelLabel && (
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-input-bg text-neutral-primary border border-border-gray/50">
+                      {meta.levelLabel}
+                    </span>
+                  )}
+                </div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-neutral-primary tracking-tight">
                   {course.title}
                 </h1>
@@ -176,10 +221,16 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({ courseId }) 
                   size="md"
                   fullWidth
                   loading={busy || isLoadingEnrollments}
+                  disabled={!existingEnrollment && isCourseEmpty}
                   onClick={handlePrimaryAction}
                 >
                   {primaryLabel}
                 </Button>
+                {!existingEnrollment && isCourseEmpty && (
+                  <p className="text-neutral-secondary text-xs text-center">
+                    Lessons haven&apos;t been published for this course yet.
+                  </p>
+                )}
                 {isPendingPayment && (
                   <p className="text-neutral-secondary text-xs text-center">
                     Payment pending — complete checkout to unlock this course.
@@ -198,10 +249,12 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({ courseId }) 
 
           {isLoadingOutline ? (
             <InlineSpinner />
-          ) : !outline?.modules.length ? (
-            <p className="text-neutral-secondary text-sm">Curriculum is being finalized.</p>
+          ) : totalOutlineItems === 0 ? (
+            <p className="text-neutral-secondary text-sm">
+              No lessons have been published for this course yet.
+            </p>
           ) : (
-            <CurriculumList modules={outline.modules} mode="preview" />
+            <CurriculumList modules={outline!.modules} mode="preview" />
           )}
         </div>
       </motion.div>

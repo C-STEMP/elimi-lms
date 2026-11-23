@@ -2,7 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import { FiArrowRight, FiBookOpen } from "react-icons/fi";
+import { FiArrowRight } from "react-icons/fi";
+import {
+  CourseArtwork,
+  getCourseVisualTheme,
+  parseCourseDescriptionMeta,
+} from "@/shared/components/ui/course-artwork";
 import { formatMoney, isFree } from "@/shared/lib/money";
 import type { CourseSummary } from "@/features/courses/types";
 
@@ -16,60 +21,60 @@ export const CatalogCourseCard: React.FC<CatalogCourseCardProps> = ({
   thumbnailUrl,
 }) => {
   const free = isFree(course.price);
+  const meta = parseCourseDescriptionMeta(course.description);
+  const theme = getCourseVisualTheme(course.title, course.description);
 
   return (
     <Link
       href={`/courses/${course.id}`}
-      className="group bg-white border border-border-gray/60 rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+      className="group bg-white border border-border-gray/55 hover:border-primary-solid/35 rounded-2xl overflow-hidden flex flex-col shadow-2xs transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
     >
-      <div className="relative h-36 bg-linear-to-br from-primary/15 to-secondary/20 flex items-center justify-center overflow-hidden">
-        {thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- resolved external asset URL
-          <img
-            src={thumbnailUrl}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <FiBookOpen className="w-8 h-8 text-primary-solid/30" />
-        )}
+      <CourseArtwork
+        title={course.title}
+        description={course.description}
+        thumbnailUrl={thumbnailUrl}
+        className="h-36"
+      >
         <span
-          className={`absolute top-3 left-3 text-[11px] font-bold px-2.5 py-1 rounded-full ${
+          className={`absolute top-3 left-3 z-10 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-xs ${
             free
-              ? "bg-green-100 text-green-800"
-              : "bg-white/90 text-primary-solid"
+              ? "bg-white/95 text-emerald-700 border border-emerald-200/80"
+              : "bg-white/95 text-primary-solid border border-border-gray/50"
           }`}
         >
-          {free ? "Free" : "Paid"}
+          {free ? "Free" : formatMoney(course.price)}
         </span>
-        {(() => {
-          const firstUnitId =
-            course.capLinkage?.unitId || course.capLinkage?.unitIds?.[0];
-          return firstUnitId ? (
-            <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-md bg-neutral-900/70 text-white backdrop-blur-xs font-mono uppercase">
-              {firstUnitId.replace("unit-", "UNIT ")}
-            </span>
-          ) : null;
-        })()}
-      </div>
+        {meta.levelLabel && (
+          <span className="absolute top-3 right-3 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-900/75 text-white backdrop-blur-xs">
+            {meta.levelLabel}
+          </span>
+        )}
+      </CourseArtwork>
 
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <h3 className="font-bold text-text-dark text-sm leading-snug line-clamp-2">
+        {meta.tradeLabel && (
+          <span
+            className={`self-start px-2 py-0.5 rounded-md border text-[10px] font-bold ${theme.badgeBg} ${theme.badgeText}`}
+          >
+            {meta.tradeLabel}
+          </span>
+        )}
+        <h3 className="font-bold text-text-dark text-sm leading-snug line-clamp-2 group-hover:text-primary-solid transition-colors">
           {course.title}
         </h3>
         <p className="text-neutral-secondary text-xs leading-relaxed line-clamp-2 flex-1">
-          {course.description || "No description available yet."}
+          {course.description || "Build practical skills and earn a verified certificate."}
         </p>
 
-        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-1 pt-2.5 border-t border-border-gray/35">
           <span
-            className={`font-bold text-sm ${free ? "text-green-700" : "text-primary-solid"}`}
+            className={`font-bold text-xs ${free ? "text-emerald-700" : "text-primary-solid"}`}
           >
-            {free ? "Free" : formatMoney(course.price)}
+            {free ? "Free Access" : formatMoney(course.price)}
           </span>
-          <span className="flex items-center gap-1 text-xs font-semibold text-neutral-secondary group-hover:text-primary-solid transition-colors">
-            View
-            <FiArrowRight className="w-3.5 h-3.5" />
+          <span className="flex items-center gap-1 text-xs font-bold text-primary-solid">
+            <span>View Unit</span>
+            <FiArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </span>
         </div>
       </div>

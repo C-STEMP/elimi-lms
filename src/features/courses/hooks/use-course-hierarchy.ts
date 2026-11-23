@@ -57,6 +57,20 @@ export interface OrderedLevelCourse {
 }
 
 /**
+ * Normalizes unit reference codes for sorting so typos like "PLOO4" (letter O)
+ * sort alongside "PL005" (digit 0) in true numeric order: 4, 5, 6, 7, 8.
+ */
+function normalizeUnitRefForSort(ref: string): string {
+  return ref
+    .trim()
+    .toUpperCase()
+    .replace(/([A-Z])O+(?=\d)/g, (match, letter) => {
+      const zeros = "0".repeat(match.length - 1);
+      return `${letter}${zeros}`;
+    });
+}
+
+/**
  * Sorts courses within a qualification level into a deterministic learning sequence.
  * Prefers matching CAP Unit referenceNumber (natural numeric sort), then falls back
  * to course title natural sort.
@@ -66,8 +80,8 @@ export function sortLevelCourses(
   capUnits: Unit[] = [],
 ): OrderedLevelCourse[] {
   const sortedCapUnits = [...capUnits].sort((a, b) =>
-    (a.referenceNumber || a.title || "").localeCompare(
-      b.referenceNumber || b.title || "",
+    normalizeUnitRefForSort(a.referenceNumber || a.title || "").localeCompare(
+      normalizeUnitRefForSort(b.referenceNumber || b.title || ""),
       undefined,
       { numeric: true, sensitivity: "base" },
     ),

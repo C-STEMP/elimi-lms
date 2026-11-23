@@ -58,6 +58,17 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
           router.push(`/learn/${enrollment.id}`);
         },
         onError: (error) => {
+          if (
+            error.status === 401 ||
+            error.message?.toLowerCase().includes("authentication is required")
+          ) {
+            const currentPath =
+              typeof window !== "undefined"
+                ? `${window.location.pathname}${window.location.search}`
+                : `/courses/${nextCourse.id}`;
+            router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+            return;
+          }
           if (error.status === 403 && error.code === "lms.onboarding.incomplete") {
             router.push("/onboarding");
             return;
@@ -110,73 +121,56 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
     return null;
   }
 
-  // Banner variant (for CertificateDetailView)
+  // Calm, aligned continuation bar (placed below the certificate, matching its width)
   if (nextCourse) {
     return (
-      <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-6">
-        <div className="bg-primary-solid/5 border border-primary-solid/20 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-solid text-white flex items-center justify-center shrink-0">
-              <FiCheckCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wide text-primary-solid">
-                Unit {currentIndex + 1} of {totalUnitsInLevel} Complete
-              </span>
-              <h3 className="text-sm sm:text-base font-extrabold text-neutral-primary">
-                Up Next: Unit {nextStepNumber} — {nextCourse.title}
-              </h3>
-              <p className="text-xs text-neutral-secondary mt-0.5">
-                Continue to the next unit in this level to keep progressing toward full level completion.
-              </p>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={isEnrolling}
-            onClick={handleGoToNextUnit}
-            rightIcon={<FiArrowRight className="w-4 h-4" />}
-            className="shrink-0"
-          >
-            Continue to Next Unit
-          </Button>
+      <div className="bg-white border border-gray-200/80 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="text-xs font-medium text-neutral-secondary">
+            Up next · Unit {nextStepNumber} of {totalUnitsInLevel}
+          </span>
+          <h3 className="text-sm sm:text-base font-semibold text-neutral-primary truncate">
+            {nextCourse.title}
+          </h3>
         </div>
+
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={isEnrolling}
+          onClick={handleGoToNextUnit}
+          rightIcon={<FiArrowRight className="w-4 h-4" />}
+          className="shrink-0 self-start sm:self-auto"
+        >
+          Continue
+        </Button>
       </div>
     );
   }
 
   if (isLastUnitInLevel && tradeId) {
     return (
-      <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-6">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-              <FiAward className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-extrabold text-neutral-primary">
-                All {totalUnitsInLevel} Units in This Level Completed!
-              </h3>
-              <p className="text-xs text-neutral-secondary mt-0.5">
-                You&apos;ve reached the final unit of this qualification level. Explore the next level in this trade.
-              </p>
-            </div>
-          </div>
-
-          <Link href={`/courses?tradeId=${tradeId}`} className="shrink-0">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              rightIcon={<FiArrowRight className="w-4 h-4" />}
-            >
-              View Trade Levels
-            </Button>
-          </Link>
+      <div className="bg-white border border-gray-200/80 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="text-xs font-medium text-emerald-700">
+            Level complete · All {totalUnitsInLevel} units finished
+          </span>
+          <h3 className="text-sm sm:text-base font-semibold text-neutral-primary">
+            Ready for the next qualification level?
+          </h3>
         </div>
+
+        <Link href={`/courses?tradeId=${tradeId}`} className="shrink-0 self-start sm:self-auto">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            rightIcon={<FiArrowRight className="w-4 h-4" />}
+          >
+            View Trade Levels
+          </Button>
+        </Link>
       </div>
     );
   }

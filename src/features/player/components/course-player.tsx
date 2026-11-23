@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { FiAward, FiX } from "react-icons/fi";
+import { FiAward, FiBookOpen, FiSidebar, FiX } from "react-icons/fi";
 import { Button } from "@/shared/components/ui/button";
 import { InlineSpinner } from "@/shared/components/ui/loader";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
@@ -268,9 +268,46 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ enrollmentId }) => {
               isSidebarOpen={isSidebarOpen}
               onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             />
+          ) : flatItems.length === 0 ? (
+            <div className="min-h-[420px] flex-1 flex flex-col items-center justify-center text-center px-6 py-16 gap-3">
+              <div className="w-12 h-12 rounded-full bg-input-bg flex items-center justify-center text-neutral-secondary">
+                <FiBookOpen className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col gap-1 max-w-sm">
+                <h3 className="text-base font-bold text-neutral-primary">
+                  No course content yet
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-secondary leading-relaxed">
+                  Lessons haven&apos;t been added to this course yet. Check back soon or continue with another course.
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 mt-2">
+                <Link href="/courses">
+                  <Button type="button" variant="primary" size="sm">
+                    Browse Courses
+                  </Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button type="button" variant="outline" size="sm">
+                    Back to Dashboard
+                  </Button>
+                </Link>
+              </div>
+            </div>
           ) : (
-            <div className="h-96 flex items-center justify-center text-neutral-secondary text-sm">
-              Select an item from the curriculum to begin.
+            <div className="min-h-[420px] flex-1 flex flex-col items-center justify-center text-center px-6 py-16 gap-3">
+              <p className="text-neutral-secondary text-sm">
+                Select a lesson from the course outline to begin.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                leftIcon={<FiSidebar className="w-4 h-4" />}
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                Open Course Outline
+              </Button>
             </div>
           )}
 
