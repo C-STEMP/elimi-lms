@@ -12,6 +12,7 @@ export type CoursesQuery = PaginationParams & {
   q?: string;
   sectorId?: string;
   tradeId?: string;
+  qualificationLevelId?: string;
   unitId?: string;
 };
 

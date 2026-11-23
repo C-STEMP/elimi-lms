@@ -3,18 +3,34 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { FiAward } from "react-icons/fi";
+import { FiArrowRight, FiAward, FiCalendar } from "react-icons/fi";
 import { Button } from "@/shared/components/ui/button";
 import { InlineSpinner } from "@/shared/components/ui/loader";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { useMyCertificates } from "@/features/certificates/hooks";
 
+function formatIssuedDate(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function shortCredentialId(id: string): string {
+  const clean = id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return clean.length > 8 ? clean.slice(-8) : clean;
+}
+
 export const CertificatesView: React.FC = () => {
   const { data: certificates, isLoading } = useMyCertificates();
-
+  const items = certificates?.data ?? [];
 
   return (
-    <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
+    <div className="w-full min-h-screen bg-[#f8f7f5] flex flex-col">
       <DashboardNav title="Certificates" />
 
       <motion.div
@@ -23,58 +39,130 @@ export const CertificatesView: React.FC = () => {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col gap-6"
       >
-        <p className="text-neutral-secondary text-sm -mt-2">
-          Certificates you&apos;ve earned by completing courses.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-200/80">
+          <p className="text-neutral-secondary text-sm">
+            Verified certificates earned from completed courses.
+          </p>
+          {!isLoading && items.length > 0 && (
+            <span className="text-xs font-medium text-neutral-secondary tabular-nums">
+              {items.length} {items.length === 1 ? "certificate" : "certificates"}
+            </span>
+          )}
+        </div>
 
         {isLoading ? (
           <InlineSpinner />
-        ) : !certificates?.data.length ? (
-          <div className="bg-white border border-border-gray/60 rounded-2xl py-16 flex flex-col items-center gap-3 text-center">
+        ) : items.length === 0 ? (
+          <div className="bg-white border border-gray-200/80 rounded-xl py-16 px-6 flex flex-col items-center gap-3 text-center">
             <FiAward className="w-10 h-10 text-neutral-secondary/40" />
             <p className="text-neutral-primary font-semibold">No certificates yet</p>
             <p className="text-neutral-secondary text-sm max-w-sm">
               Finish a course&apos;s modules and assessment to earn your first certificate.
             </p>
-            <Link href="/courses">
-              <Button type="button" variant="secondary" size="sm">
+            <Link href="/courses" className="mt-1">
+              <Button type="button" variant="primary" size="sm">
                 Browse Courses
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {certificates.data.map((certificate) => {
-              return (
-                <div
-                  key={certificate.id}
-                  className="bg-white border border-border-gray/60 rounded-2xl p-5 flex flex-col gap-3"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((certificate) => {
+              const isRevoked = certificate.status === "revoked";
+              const issuedLabel = formatIssuedDate(certificate.issuedAt);
+              const credCode = shortCredentialId(certificate.id);
+
+              const cardContent = (
+                <article
+                  className={`group bg-white border rounded-xl overflow-hidden flex flex-col transition-all duration-200 ${
+                    isRevoked
+                      ? "border-gray-200 opacity-75"
+                      : "border-gray-200/90 hover:border-primary-solid/40 hover:shadow-md hover:-translate-y-0.5"
+                  }`}
                 >
-                  <div className="w-11 h-11 rounded-full bg-secondary/10 flex items-center justify-center">
-                    <FiAward className="w-5 h-5 text-secondary" />
+                  {/* Top burgundy & gold accent rule */}
+                  <div className="h-1.5 w-full bg-linear-to-r from-primary-solid via-primary to-secondary" />
+
+                  {/* Parchment diploma preview surface */}
+                  <div className="p-4 bg-[#fcfaf4]">
+                    <div className="border border-[#e7dcc7] rounded-lg p-4 sm:p-5 bg-[#fffdf8] relative flex flex-col justify-between min-h-[148px]">
+                      {/* Subtle inner corner hairline */}
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-1.5 border border-[#efe7d7] rounded-[5px]"
+                      />
+
+                      <div className="relative z-10 flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-solid/80">
+                            Certificate of Completion
+                          </span>
+                          <div className="w-8 h-[2px] bg-secondary rounded-full" />
+                        </div>
+                        <div
+                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border ${
+                            isRevoked
+                              ? "bg-gray-100 border-gray-200 text-gray-400"
+                              : "bg-[#fef7e6] border-[#f2d491] text-[#b4690e]"
+                          }`}
+                        >
+                          <FiAward className="w-4 h-4" />
+                        </div>
+                      </div>
+
+                      <div className="relative z-10 mt-4">
+                        <h3 className="font-serif font-bold text-neutral-primary text-base sm:text-[17px] leading-snug line-clamp-2 group-hover:text-primary-solid transition-colors">
+                          {certificate.courseTitle || "Course Certificate"}
+                        </h3>
+                        <p className="text-[11px] text-neutral-secondary mt-1.5">
+                          Awarded by <span className="font-semibold text-neutral-primary">ELIMI</span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-text-dark text-sm leading-tight">
-                      {certificate.courseTitle || "Course Certificate"}
-                    </h3>
-                    <p className="text-neutral-secondary text-xs mt-1">
-                      {certificate.status === "revoked"
-                        ? "Revoked"
-                        : `Issued ${new Date(certificate.issuedAt).toLocaleDateString()}`}
-                    </p>
+
+                  {/* Clean metadata & action footer */}
+                  <div className="px-5 py-3.5 bg-white border-t border-gray-100 flex items-center justify-between gap-3">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      {isRevoked ? (
+                        <span className="text-xs font-semibold text-red-700">Revoked</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-neutral-secondary">
+                          <FiCalendar className="w-3.5 h-3.5 shrink-0 text-neutral-secondary/70" />
+                          <span>Issued {issuedLabel}</span>
+                        </span>
+                      )}
+                      {credCode && (
+                        <span className="text-[10px] font-mono text-neutral-secondary/75">
+                          ID · {credCode}
+                        </span>
+                      )}
+                    </div>
+
+                    {isRevoked ? (
+                      <span className="text-xs font-medium text-neutral-secondary">
+                        Unavailable
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary-solid shrink-0">
+                        <span>View</span>
+                        <FiArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                    )}
                   </div>
-                  {certificate.status === "revoked" ? (
-                    <Button type="button" variant="outline" size="sm" fullWidth disabled>
-                      Revoked
-                    </Button>
-                  ) : (
-                    <Link href={`/certificates/${certificate.id}`}>
-                      <Button type="button" variant="outline" size="sm" fullWidth>
-                        View Certificate
-                      </Button>
-                    </Link>
-                  )}
-                </div>
+                </article>
+              );
+
+              return isRevoked ? (
+                <div key={certificate.id}>{cardContent}</div>
+              ) : (
+                <Link
+                  key={certificate.id}
+                  href={`/certificates/${certificate.id}`}
+                  className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-solid rounded-xl"
+                >
+                  {cardContent}
+                </Link>
               );
             })}
           </div>

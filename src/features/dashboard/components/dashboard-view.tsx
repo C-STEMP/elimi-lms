@@ -7,6 +7,7 @@ import { FiAlertCircle, FiArrowRight } from "react-icons/fi";
 import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
 import { LearningPromoCard } from "@/features/dashboard/components/learning-promo-card";
 import { StatsGrid } from "@/features/dashboard/components/stats-grid";
+import { ContinueLearning } from "@/features/dashboard/components/continue-learning";
 import { RecommendedCourses } from "@/features/dashboard/components/recommended-courses";
 import { useOnboarding } from "@/features/onboarding/hooks";
 
@@ -15,14 +16,14 @@ export const DashboardView: React.FC = () => {
   const isProfileIncomplete = onboarding && onboarding.status !== "completed";
 
   return (
-    <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
-      <DashboardNav rightAction={null} />
+    <div className="w-full min-h-screen bg-[#f8f7f5] flex flex-col">
+      <DashboardNav />
 
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col gap-6"
+        className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col gap-8"
       >
         {isProfileIncomplete && (
           <div className="bg-gradient-to-r from-[#75152b]/10 via-[#aa1d3f]/10 to-amber-500/10 border border-primary-solid/20 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
@@ -58,6 +59,8 @@ export const DashboardView: React.FC = () => {
             <StatsGrid />
           </div>
         </div>
+
+        <ContinueLearning />
 
         <RecommendedCourses />
       </motion.div>

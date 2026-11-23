@@ -47,8 +47,12 @@ const Img: React.FC<{
 
 export function CertificateTemplate({
   data,
+  headerAction,
+  footerSlot,
 }: {
   data: CertificateRenderData | undefined;
+  headerAction?: React.ReactNode;
+  footerSlot?: React.ReactNode;
 }) {
   const mainRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -126,18 +130,29 @@ export function CertificateTemplate({
                   family and loved ones. Enjoy!
                 </p>
               </div>
-              <button
-                onClick={handleDownload}
-                disabled={loading}
-                className="w-max py-2 px-6 md:px-8 text-white bg-primary rounded-md cursor-pointer relative z-50 flex items-center gap-2"
-              >
-                {loading ? (
-                  <span className="animate-spin border-2 border-white border-r-transparent rounded-full h-5 w-5 grid place-items-center"></span>
-                ) : (
-                  <IoDownloadOutline />
-                )}
-                {loading ? "Downloading..." : "Download"}
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  onClick={handleDownload}
+                  disabled={loading}
+                  className={`py-2 px-5 md:px-6 rounded-lg text-sm font-semibold cursor-pointer relative z-10 flex items-center gap-2 transition-colors ${
+                    headerAction
+                      ? "border border-gray-300 text-neutral-primary bg-white hover:bg-gray-50"
+                      : "text-white bg-primary hover:bg-primary-hover"
+                  }`}
+                >
+                  {loading ? (
+                    <span
+                      className={`animate-spin border-2 border-r-transparent rounded-full h-4 w-4 grid place-items-center ${
+                        headerAction ? "border-neutral-primary" : "border-white"
+                      }`}
+                    />
+                  ) : (
+                    <IoDownloadOutline className="w-4 h-4" />
+                  )}
+                  {loading ? "Downloading..." : "Download"}
+                </button>
+                {headerAction}
+              </div>
             </div>
           </section>
           <section className="bg-primary/5 flex flex-col items-center px-3 sm:px-6 py-6 md:py-10">
@@ -323,6 +338,9 @@ export function CertificateTemplate({
                 </div>
               </div>
             </div>
+            {footerSlot && (
+              <div className="w-full max-w-280.75 mt-6">{footerSlot}</div>
+            )}
           </section>
         </main>
       ) : (
