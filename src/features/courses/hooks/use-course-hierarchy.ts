@@ -57,38 +57,16 @@ export interface OrderedLevelCourse {
 }
 
 /**
- * Normalizes unit reference codes for sorting so typos like "PLOO4" (letter O)
- * sort alongside "PL005" (digit 0) in true numeric order: 4, 5, 6, 7, 8.
- */
-function normalizeUnitRefForSort(ref: string): string {
-  return ref
-    .trim()
-    .toUpperCase()
-    .replace(/([A-Z])O+(?=\d)/g, (match, letter) => {
-      const zeros = "0".repeat(match.length - 1);
-      return `${letter}${zeros}`;
-    });
-}
-
-/**
- * Sorts courses within a qualification level into a deterministic learning sequence.
- * Prefers matching CAP Unit referenceNumber (natural numeric sort), then falls back
- * to course title natural sort.
+ * Sorts courses within a qualification level into the exact sequence defined
+ * by the CAP NOS document (`capUnits` array order), falling back to natural
+ * title order for any course not matched to a CAP unit.
  */
 export function sortLevelCourses(
   courses: CourseSummary[],
   capUnits: Unit[] = [],
 ): OrderedLevelCourse[] {
-  const sortedCapUnits = [...capUnits].sort((a, b) =>
-    normalizeUnitRefForSort(a.referenceNumber || a.title || "").localeCompare(
-      normalizeUnitRefForSort(b.referenceNumber || b.title || ""),
-      undefined,
-      { numeric: true, sensitivity: "base" },
-    ),
-  );
-
   const unitById = new Map<string, { unit: Unit; index: number }>();
-  sortedCapUnits.forEach((unit, index) => {
+  capUnits.forEach((unit, index) => {
     unitById.set(unit.id, { unit, index });
   });
 
@@ -139,6 +117,9 @@ export function useNextUnitInLevel(course?: CourseSummary | CourseDetail | null)
     hasLevelContext,
   );
 
+  const { data: tradeDetail } = useCapTradeDetail(
+    hasLevelContext ? tradeId : null,
+  );
   const { data: capUnits = [] } = useCapTradeUnits(
     hasLevelContext ? tradeId : null,
   );
@@ -155,11 +136,18 @@ export function useNextUnitInLevel(course?: CourseSummary | CourseDetail | null)
         )
       : rawCourses;
 
-    const scopedUnits = qualificationLevelId
-      ? capUnits.filter(
-          (u) => !u.qualificationLevelId || u.qualificationLevelId === qualificationLevelId,
-        )
-      : capUnits;
+    const nosLevelUnits = tradeDetail?.activeNosDocument?.qualificationLevels?.find(
+      (l) => l.id === qualificationLevelId,
+    )?.units;
+
+    const scopedUnits =
+      nosLevelUnits && nosLevelUnits.length > 0
+        ? nosLevelUnits
+        : qualificationLevelId
+          ? capUnits.filter(
+              (u) => !u.qualificationLevelId || u.qualificationLevelId === qualificationLevelId,
+            )
+          : capUnits;
 
     const orderedCourses = sortLevelCourses(scopedCourses, scopedUnits);
     const currentIndex = course
@@ -198,6 +186,7 @@ export function useNextUnitInLevel(course?: CourseSummary | CourseDetail | null)
   }, [
     levelCoursesRes,
     qualificationLevelId,
+    tradeDetail,
     capUnits,
     course,
     myEnrollments,

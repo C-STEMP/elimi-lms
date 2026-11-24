@@ -65,3 +65,24 @@ export type CheckoutResult = {
   checkoutUrl: string;
   amount: Money;
 };
+
+export type LevelEnrollmentStatus =
+  | "pending"
+  | "active"
+  | "completed"
+  | "expired"
+  | "withdrawn";
+
+export type LevelEnrollment = {
+  id: string;
+  offeringId: string;
+  offeringTitle?: string;
+  qualificationLevelId?: string;
+  tradeId?: string;
+  learnerLmsUserId: string;
+  status: LevelEnrollmentStatus;
+  amount?: Money;
+  paymentId?: string | null;
+  createdAt?: string;
+  completedAt?: string | null;
+};

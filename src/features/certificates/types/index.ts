@@ -13,6 +13,23 @@ export type LmsCertificate = {
   revokedAt?: string | null;
 };
 
+export type LmsLevelCertificate = {
+  id: string;
+  levelEnrollmentId?: string;
+  offeringId?: string;
+  offeringTitle?: string;
+  qualificationLevelId?: string;
+  tradeId?: string;
+  tradeName?: string;
+  level?: number;
+  title?: string;
+  learnerLmsUserId?: string;
+  status: CertificateStatus;
+  assetId?: string | null;
+  issuedAt: string;
+  revokedAt?: string | null;
+};
+
 /** Sponsoring organisation / programme shown on a certificate (optional). */
 export type CertificateOrganization = {
   name: string;

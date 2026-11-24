@@ -1,7 +1,7 @@
 "use client";
 
 import { useMyEnrollments } from "@/features/enrollments/hooks";
-import { useMyCertificates } from "@/features/certificates/hooks";
+import { useMyCertificates, useMyLevelCertificates } from "@/features/certificates/hooks";
 import type { DashboardStat } from "@/features/dashboard/types";
 
 export { formatMoney } from "@/shared/lib/money";
@@ -9,9 +9,15 @@ export { formatMoney } from "@/shared/lib/money";
 export function useDashboardStats(): { stats: DashboardStat[]; isLoading: boolean } {
   const enrollmentsQuery = useMyEnrollments();
   const certificatesQuery = useMyCertificates();
+  const levelCertificatesQuery = useMyLevelCertificates();
 
   const enrollments = enrollmentsQuery.data?.data ?? [];
   const certificates = certificatesQuery.data?.data ?? [];
+  const levelCertificates = levelCertificatesQuery.data?.data ?? [];
+
+  const totalIssuedCerts =
+    certificates.filter((c) => c.status === "issued").length +
+    levelCertificates.filter((c) => c.status === "issued").length;
 
   const stats: DashboardStat[] = [
     { label: "Enrolled", value: enrollments.length, suffix: "courses" },
@@ -27,14 +33,17 @@ export function useDashboardStats(): { stats: DashboardStat[]; isLoading: boolea
     },
     {
       label: "Certificates",
-      value: certificates.filter((c) => c.status === "issued").length,
+      value: totalIssuedCerts,
       suffix: "earned",
     },
   ];
 
   return {
     stats,
-    isLoading: enrollmentsQuery.isLoading || certificatesQuery.isLoading,
+    isLoading:
+      enrollmentsQuery.isLoading ||
+      certificatesQuery.isLoading ||
+      levelCertificatesQuery.isLoading,
   };
 }
 

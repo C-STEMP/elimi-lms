@@ -3,11 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as enrollmentsApi from "@/features/enrollments/api";
 import type { EnrollmentsQuery } from "@/features/enrollments/types";
+import type { PaginationParams } from "@/shared/types";
 
 export const enrollmentKeys = {
   all: ["enrollments"] as const,
   mineLists: () => [...enrollmentKeys.all, "mine"] as const,
   mine: (params?: EnrollmentsQuery) => [...enrollmentKeys.mineLists(), params ?? {}] as const,
+  levelMineLists: () => [...enrollmentKeys.all, "level-mine"] as const,
+  levelMine: (params?: PaginationParams) =>
+    [...enrollmentKeys.levelMineLists(), params ?? {}] as const,
   details: () => [...enrollmentKeys.all, "detail"] as const,
   detail: (enrollmentId: string) => [...enrollmentKeys.details(), enrollmentId] as const,
 };
@@ -16,6 +20,13 @@ export function useMyEnrollments(params?: EnrollmentsQuery) {
   return useQuery({
     queryKey: enrollmentKeys.mine(params),
     queryFn: () => enrollmentsApi.getMyEnrollments(params),
+  });
+}
+
+export function useMyLevelEnrollments(params?: PaginationParams) {
+  return useQuery({
+    queryKey: enrollmentKeys.levelMine(params),
+    queryFn: () => enrollmentsApi.getMyLevelEnrollments(params),
   });
 }
 

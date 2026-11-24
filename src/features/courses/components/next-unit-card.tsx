@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { FiArrowRight, FiAward, FiCheckCircle } from "react-icons/fi";
 import { Button } from "@/shared/components/ui/button";
 import { useToast } from "@/shared/components/ui/toast";
-import { useCreateEnrollment } from "@/features/enrollments/hooks";
+import { useCreateEnrollment, useMyLevelEnrollments } from "@/features/enrollments/hooks";
+import {
+  useLevelEnrollmentCertificate,
+  useMyLevelCertificates,
+} from "@/features/certificates/hooks";
 import { useNextUnitInLevel } from "@/features/courses/hooks/use-course-hierarchy";
 import { isFree } from "@/shared/lib/money";
 import type { CourseDetail, CourseSummary } from "@/features/courses/types";
@@ -27,6 +31,7 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
   const {
     hasLevelContext,
     tradeId,
+    qualificationLevelId,
     currentIndex,
     totalUnitsInLevel,
     nextCourse,
@@ -34,6 +39,31 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
     nextEnrollment,
     isLastUnitInLevel,
   } = useNextUnitInLevel(course);
+
+  const { data: myLevelEnrollments } = useMyLevelEnrollments();
+  const { data: myLevelCerts } = useMyLevelCertificates();
+
+  const matchingCompletedLevelEnrollment = (myLevelEnrollments?.data ?? []).find(
+    (le) =>
+      le.status === "completed" &&
+      ((qualificationLevelId && le.qualificationLevelId === qualificationLevelId) ||
+        (tradeId && le.tradeId === tradeId)),
+  );
+
+  const { data: enrollmentLevelCert } = useLevelEnrollmentCertificate(
+    isLastUnitInLevel ? matchingCompletedLevelEnrollment?.id ?? "" : "",
+  );
+
+  const matchingLevelCert =
+    enrollmentLevelCert ??
+    (myLevelCerts?.data ?? []).find(
+      (c) =>
+        c.status !== "revoked" &&
+        ((qualificationLevelId && c.qualificationLevelId === qualificationLevelId) ||
+          (matchingCompletedLevelEnrollment &&
+            c.levelEnrollmentId === matchingCompletedLevelEnrollment.id)),
+    ) ??
+    null;
 
   if (!hasLevelContext || totalUnitsInLevel <= 1) {
     return null;
@@ -103,19 +133,35 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
       );
     }
 
-    if (isLastUnitInLevel && tradeId) {
-      return (
-        <Link href={`/courses?tradeId=${tradeId}`}>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            rightIcon={<FiArrowRight className="w-3.5 h-3.5" />}
-          >
-            Explore Next Level
-          </Button>
-        </Link>
-      );
+    if (isLastUnitInLevel) {
+      if (matchingLevelCert) {
+        return (
+          <Link href={`/certificates/level/${matchingLevelCert.id}`}>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              rightIcon={<FiArrowRight className="w-3.5 h-3.5" />}
+            >
+              View Level Certificate
+            </Button>
+          </Link>
+        );
+      }
+      if (tradeId) {
+        return (
+          <Link href={`/courses?tradeId=${tradeId}`}>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              rightIcon={<FiArrowRight className="w-3.5 h-3.5" />}
+            >
+              Explore Next Level
+            </Button>
+          </Link>
+        );
+      }
     }
 
     return null;
@@ -149,7 +195,7 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
     );
   }
 
-  if (isLastUnitInLevel && tradeId) {
+  if (isLastUnitInLevel && (matchingLevelCert || tradeId)) {
     return (
       <div className="bg-white border border-gray-200/80 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
         <div className="flex flex-col gap-0.5 min-w-0">
@@ -157,18 +203,27 @@ export const NextUnitAction: React.FC<NextUnitActionProps> = ({
             Level complete · All {totalUnitsInLevel} units finished
           </span>
           <h3 className="text-sm sm:text-base font-semibold text-neutral-primary">
-            Ready for the next qualification level?
+            {matchingLevelCert
+              ? "Your qualification level certificate is ready"
+              : "Ready for the next qualification level?"}
           </h3>
         </div>
 
-        <Link href={`/courses?tradeId=${tradeId}`} className="shrink-0 self-start sm:self-auto">
+        <Link
+          href={
+            matchingLevelCert
+              ? `/certificates/level/${matchingLevelCert.id}`
+              : `/courses?tradeId=${tradeId}`
+          }
+          className="shrink-0 self-start sm:self-auto"
+        >
           <Button
             type="button"
             variant="primary"
             size="sm"
             rightIcon={<FiArrowRight className="w-4 h-4" />}
           >
-            View Trade Levels
+            {matchingLevelCert ? "View Level Certificate" : "View Trade Levels"}
           </Button>
         </Link>
       </div>
