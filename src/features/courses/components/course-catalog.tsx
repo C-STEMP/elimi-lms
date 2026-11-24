@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import {
   FiArrowLeft,
   FiArrowRight,
+  FiAward,
   FiBookOpen,
   FiCheckCircle,
   FiChevronRight,
@@ -27,6 +28,7 @@ import {
   useCapTradeUnits,
 } from "@/features/courses/hooks/use-course-hierarchy";
 import { useCreateEnrollment, useMyEnrollments } from "@/features/enrollments/hooks";
+import { useMyLevelCertificates } from "@/features/certificates/hooks";
 import { useResolveAssets } from "@/features/storage/hooks";
 import { formatMoney, isFree } from "@/shared/lib/money";
 import { useToast } from "@/shared/components/ui/toast";
@@ -62,6 +64,7 @@ export const CourseCatalog: React.FC = () => {
     limit: 100,
   });
   const { data: myEnrollments } = useMyEnrollments();
+  const { data: myLevelCertificates } = useMyLevelCertificates();
   const {
     mutate: enrollFree,
     isPending: isEnrolling,
@@ -217,17 +220,20 @@ export const CourseCatalog: React.FC = () => {
     [qualificationLevels, selectedLevelId],
   );
 
-  // Ordered units/courses for the selected level
+  // Ordered units/courses for the selected level (exact NOS document order)
   const orderedLevelCourses = useMemo(() => {
     if (!selectedLevelId) return [];
     const levelCourses = selectedTradeCourses.filter(
       (c) => c.capLinkage?.qualificationLevelId === selectedLevelId,
     );
-    const levelCapUnits = capTradeUnits.filter(
-      (u) => !u.qualificationLevelId || u.qualificationLevelId === selectedLevelId,
-    );
-    return sortLevelCourses(levelCourses, levelCapUnits);
-  }, [selectedTradeCourses, selectedLevelId, capTradeUnits]);
+    const nosUnits =
+      selectedLevel?.units && selectedLevel.units.length > 0
+        ? selectedLevel.units
+        : capTradeUnits.filter(
+            (u) => !u.qualificationLevelId || u.qualificationLevelId === selectedLevelId,
+          );
+    return sortLevelCourses(levelCourses, nosUnits);
+  }, [selectedTradeCourses, selectedLevelId, selectedLevel, capTradeUnits]);
 
   // Unassigned courses under the selected trade (if any lack qualificationLevelId)
   const unassignedTradeCourses = useMemo(() => {
@@ -263,9 +269,20 @@ export const CourseCatalog: React.FC = () => {
     (entry) => enrollmentByCourseId.get(entry.course.id)?.status === "completed",
   ).length;
 
+  const isInsideLevelView = Boolean(
+    !showFlatCatalog && selectedTradeId && selectedLevelId,
+  );
+
   return (
-    <div className="w-full min-h-screen bg-input-bg/40 flex flex-col">
-      <DashboardNav title="Browse Courses" rightAction={null} />
+    <div className="w-full min-h-screen bg-[#f8f7f5] flex flex-col">
+      <DashboardNav
+        title={isInsideLevelView ? undefined : "Browse Courses"}
+        backHref={
+          isInsideLevelView ? `/courses?tradeId=${selectedTradeId}` : undefined
+        }
+        backTitle={isInsideLevelView ? selectedTradeName : undefined}
+        rightAction={null}
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -273,71 +290,73 @@ export const CourseCatalog: React.FC = () => {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="max-w-7xl xl:max-w-360 mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col gap-6"
       >
-        {/* Top Controls: Search, View Mode, Price Filter */}
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-md">
-            <FiSearch className="w-4 h-4 text-neutral-secondary absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search any course or unit..."
-              className="bg-white pl-10"
-            />
-          </div>
+        {/* Top Controls: shown on Trades, Trade-Levels, and All Courses views (hidden inside a single Level to avoid clutter) */}
+        {!isInsideLevelView && (
+          <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-md">
+              <FiSearch className="w-4 h-4 text-neutral-secondary absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search any course or unit..."
+                className="bg-white pl-10"
+              />
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {capTrades.length > 0 && !q.trim() && (
-              <div className="flex items-center gap-1 bg-white border border-border-gray/60 rounded-xl p-1">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("trades")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
-                    viewMode === "trades"
-                      ? "bg-primary-solid text-white"
-                      : "text-neutral-secondary hover:text-neutral-primary"
-                  }`}
-                >
-                  <FiLayers className="w-3.5 h-3.5" />
-                  <span>By Trade</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setViewMode("all");
-                    if (selectedTradeId) navigateCatalog(null, null);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
-                    viewMode === "all"
-                      ? "bg-primary-solid text-white"
-                      : "text-neutral-secondary hover:text-neutral-primary"
-                  }`}
-                >
-                  <FiGrid className="w-3.5 h-3.5" />
-                  <span>All Courses</span>
-                </button>
-              </div>
-            )}
-
-            {(showFlatCatalog || selectedLevelId) && (
-              <div className="flex items-center gap-1 bg-white border border-border-gray/60 rounded-xl p-1">
-                {PRICE_FILTERS.map((filter) => (
+            <div className="flex flex-wrap items-center gap-2.5">
+              {capTrades.length > 0 && !q.trim() && (
+                <div className="flex items-center gap-1 bg-white border border-border-gray/60 rounded-xl p-1">
                   <button
-                    key={filter.id}
                     type="button"
-                    onClick={() => setPriceFilter(filter.id)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      priceFilter === filter.id
+                    onClick={() => setViewMode("trades")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                      viewMode === "trades"
                         ? "bg-primary-solid text-white"
                         : "text-neutral-secondary hover:text-neutral-primary"
                     }`}
                   >
-                    {filter.label}
+                    <FiLayers className="w-3.5 h-3.5" />
+                    <span>By Trade</span>
                   </button>
-                ))}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode("all");
+                      if (selectedTradeId) navigateCatalog(null, null);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                      viewMode === "all"
+                        ? "bg-primary-solid text-white"
+                        : "text-neutral-secondary hover:text-neutral-primary"
+                    }`}
+                  >
+                    <FiGrid className="w-3.5 h-3.5" />
+                    <span>All Courses</span>
+                  </button>
+                </div>
+              )}
+
+              {showFlatCatalog && (
+                <div className="flex items-center gap-1 bg-white border border-border-gray/60 rounded-xl p-1">
+                  {PRICE_FILTERS.map((filter) => (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => setPriceFilter(filter.id)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        priceFilter === filter.id
+                          ? "bg-primary-solid text-white"
+                          : "text-neutral-secondary hover:text-neutral-primary"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Breadcrumbs when inside Trade / Level hierarchy */}
         {!showFlatCatalog && selectedTradeId && (
@@ -643,232 +662,389 @@ export const CourseCatalog: React.FC = () => {
             )}
           </div>
         ) : (
-          /* VIEW D: STEP 3 — CLEAN CURRICULUM LIST FOR SELECTED LEVEL */
+          /* VIEW D: STEP 3 — BALANCED 2-COLUMN LEVEL CURRICULUM & PROGRESS SIDEBAR */
           (() => {
             const totalUnits = orderedLevelCourses.length;
+            const remainingUnits = Math.max(0, totalUnits - levelCompletedCount);
             const completionPct =
               totalUnits > 0 ? Math.round((levelCompletedCount / totalUnits) * 100) : 0;
 
-            // Pick a single focal "next up" unit: prefer an active in-progress enrollment,
-            // otherwise the first uncompleted unit in sequence.
-            const nextFocalCourseId =
+            const nextFocalEntry =
               orderedLevelCourses.find(({ course }) => {
                 const e = enrollmentByCourseId.get(course.id);
                 return e && e.status === "active" && e.percentComplete > 0;
-              })?.course.id ??
+              }) ??
               orderedLevelCourses.find(({ course }) => {
                 const e = enrollmentByCourseId.get(course.id);
                 return e?.status !== "completed";
-              })?.course.id ??
+              }) ??
               null;
 
+            const nextFocalCourseId = nextFocalEntry?.course.id ?? null;
+            const nextFocalEnrollment = nextFocalEntry
+              ? enrollmentByCourseId.get(nextFocalEntry.course.id)
+              : undefined;
+
+            const earnedLevelCert = (myLevelCertificates?.data ?? []).find(
+              (c) =>
+                c.status !== "revoked" &&
+                ((selectedLevelId && c.qualificationLevelId === selectedLevelId) ||
+                  (selectedTradeId &&
+                    selectedLevel &&
+                    c.tradeId === selectedTradeId &&
+                    c.level === selectedLevel.level)),
+            );
+
+            const handleStartFocal = () => {
+              if (!nextFocalEntry) return;
+              if (nextFocalEnrollment) {
+                router.push(`/learn/${nextFocalEnrollment.id}`);
+              } else if (isFree(nextFocalEntry.course.price)) {
+                handleEnrollFree(nextFocalEntry.course.id);
+              } else {
+                router.push(`/courses/${nextFocalEntry.course.id}`);
+              }
+            };
+
             return (
-              <div className="flex flex-col gap-6 max-w-4xl w-full">
-                {/* Clean, unboxed header */}
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-gray-200/80">
-                  <div className="flex flex-col gap-1">
-                    <h2 className="text-2xl font-bold text-neutral-primary tracking-tight">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Main Column (8 cols): Title + Curriculum List */}
+                <div className="lg:col-span-8 flex flex-col gap-5 min-w-0">
+                  <div className="flex flex-col gap-1.5">
+                    <h2 className="text-2xl sm:text-[26px] font-bold text-neutral-primary tracking-tight">
                       {selectedLevel
                         ? `${selectedTradeName} — Level ${selectedLevel.level}`
                         : selectedTradeName}
                     </h2>
-                    <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-secondary">
-                      <span>
-                        {totalUnits} {totalUnits === 1 ? "unit" : "units"}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>{levelCompletedCount} completed</span>
-                      {totalUnits > 0 && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <div className="inline-flex items-center gap-2">
-                            <div className="w-20 h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  completionPct === 100 ? "bg-emerald-600" : "bg-primary-solid"
-                                }`}
-                                style={{ width: `${completionPct}%` }}
-                              />
-                            </div>
-                            <span className="text-xs font-medium text-neutral-primary tabular-nums">
-                              {completionPct}%
-                            </span>
-                          </div>
-                        </>
-                      )}
+                    {selectedLevel?.purpose ? (
+                      <p className="text-sm text-neutral-secondary leading-relaxed max-w-2xl">
+                        {selectedLevel.purpose}
+                      </p>
+                    ) : (
+                      <p className="text-xs sm:text-sm text-neutral-secondary">
+                        {totalUnits} {totalUnits === 1 ? "unit" : "units"} · {levelCompletedCount} completed
+                      </p>
+                    )}
+                  </div>
+
+                  {isLoadingTradeCourses || isLoadingTradeDetail ? (
+                    <InlineSpinner className="py-16" />
+                  ) : totalUnits === 0 ? (
+                    <div className="bg-white border border-gray-200/80 rounded-xl p-10 text-center">
+                      <p className="text-neutral-primary font-semibold text-sm">
+                        No published units for this level yet
+                      </p>
+                      <p className="text-neutral-secondary text-xs mt-1">
+                        Try another level or check back soon.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <ol className="bg-white border border-gray-200/80 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-2xs">
+                      {orderedLevelCourses.map(({ course, unit, stepNumber }) => {
+                        const enrollment = enrollmentByCourseId.get(course.id);
+                        const isCompleted = enrollment?.status === "completed";
+                        const isEnrolled = Boolean(enrollment);
+                        const percent = Math.min(
+                          100,
+                          Math.max(0, Math.round(enrollment?.percentComplete ?? 0)),
+                        );
+                        const isFocal = course.id === nextFocalCourseId;
+                        const free = isFree(course.price);
+                        const thumbnailUrl = course.thumbnailAssetId
+                          ? assetUrlById.get(course.thumbnailAssetId)
+                          : undefined;
+                        const isBoilerplateDesc = Boolean(
+                          course.description &&
+                            /^Competency\s+unit\s+/i.test(course.description.trim()),
+                        );
+                        const unitHref =
+                          isEnrolled && enrollment
+                            ? `/learn/${enrollment.id}`
+                            : `/courses/${course.id}`;
 
-                  <button
-                    type="button"
-                    onClick={() => navigateCatalog(selectedTradeId, null)}
-                    className="self-start sm:self-auto text-xs font-medium text-neutral-secondary hover:text-neutral-primary inline-flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <FiArrowLeft className="w-3.5 h-3.5" />
-                    <span>All levels</span>
-                  </button>
-                </div>
-
-                {isLoadingTradeCourses || isLoadingTradeDetail ? (
-                  <InlineSpinner className="py-16" />
-                ) : totalUnits === 0 ? (
-                  <div className="bg-white border border-gray-200/80 rounded-xl p-10 text-center">
-                    <p className="text-neutral-primary font-semibold text-sm">
-                      No published units for this level yet
-                    </p>
-                    <p className="text-neutral-secondary text-xs mt-1">
-                      Try another level or check back soon.
-                    </p>
-                  </div>
-                ) : (
-                  <ol className="bg-white border border-gray-200/80 rounded-xl divide-y divide-gray-100 overflow-hidden">
-                    {orderedLevelCourses.map(({ course, unit, stepNumber }) => {
-                      const enrollment = enrollmentByCourseId.get(course.id);
-                      const isCompleted = enrollment?.status === "completed";
-                      const isEnrolled = Boolean(enrollment);
-                      const percent = Math.min(
-                        100,
-                        Math.max(0, Math.round(enrollment?.percentComplete ?? 0)),
-                      );
-                      const isFocal = course.id === nextFocalCourseId;
-                      const free = isFree(course.price);
-                      const thumbnailUrl = course.thumbnailAssetId
-                        ? assetUrlById.get(course.thumbnailAssetId)
-                        : undefined;
-                      const isBoilerplateDesc = Boolean(
-                        course.description &&
-                          /^Competency\s+unit\s+/i.test(course.description.trim()),
-                      );
-                      const unitHref =
-                        isEnrolled && enrollment
-                          ? `/learn/${enrollment.id}`
-                          : `/courses/${course.id}`;
-
-                      return (
-                        <li
-                          key={course.id}
-                          className={`px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-5 transition-colors ${
-                            isFocal ? "bg-[#fcfbfa]" : "hover:bg-gray-50/70"
-                          }`}
-                        >
-                          {/* Minimal step index / completion state */}
-                          <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                            <div className="w-7 flex items-center justify-center shrink-0">
-                              {isCompleted ? (
-                                <FiCheckCircle
-                                  className="w-5 h-5 text-emerald-600"
-                                  aria-label="Completed"
-                                />
-                              ) : (
-                                <span
-                                  className={`text-xs font-semibold tabular-nums ${
-                                    isFocal
-                                      ? "w-7 h-7 rounded-full bg-primary-solid text-white flex items-center justify-center"
-                                      : "text-neutral-secondary"
-                                  }`}
-                                >
-                                  {String(stepNumber).padStart(2, "0")}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Only render thumbnail if a real uploaded image exists */}
-                            {thumbnailUrl && (
-                              // eslint-disable-next-line @next/next/no-img-element -- resolved external asset URL
-                              <img
-                                src={thumbnailUrl}
-                                alt=""
-                                className="w-16 h-11 rounded-lg object-cover border border-gray-200/70 shrink-0 hidden sm:block"
-                              />
-                            )}
-
-                            {/* Title & quiet metadata */}
-                            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                              <Link
-                                href={unitHref}
-                                className="text-sm sm:text-[15px] font-semibold text-neutral-primary hover:text-primary-solid transition-colors leading-snug"
-                              >
-                                {course.title}
-                              </Link>
-
-                              <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-neutral-secondary">
-                                {unit?.referenceNumber && (
-                                  <span className="font-mono text-[11px] text-neutral-secondary/90">
-                                    {unit.referenceNumber}
+                        return (
+                          <li
+                            key={course.id}
+                            className={`px-5 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-5 transition-colors ${
+                              isFocal
+                                ? "bg-[#faf8f6] border-l-[3px] border-l-primary-solid"
+                                : "hover:bg-gray-50/70"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                              <div className="w-7 flex items-center justify-center shrink-0">
+                                {isCompleted ? (
+                                  <FiCheckCircle
+                                    className="w-5 h-5 text-emerald-600"
+                                    aria-label="Completed"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`text-xs font-semibold tabular-nums ${
+                                      isFocal
+                                        ? "w-7 h-7 rounded-full bg-primary-solid text-white flex items-center justify-center"
+                                        : "text-neutral-secondary"
+                                    }`}
+                                  >
+                                    {String(stepNumber).padStart(2, "0")}
                                   </span>
-                                )}
-                                {unit?.referenceNumber && <span aria-hidden="true">·</span>}
-                                <span>{free ? "Free" : formatMoney(course.price)}</span>
-                                {isCompleted && (
-                                  <>
-                                    <span aria-hidden="true">·</span>
-                                    <span className="text-emerald-700 font-medium">Completed</span>
-                                  </>
-                                )}
-                                {!isCompleted && isEnrolled && percent > 0 && (
-                                  <>
-                                    <span aria-hidden="true">·</span>
-                                    <span className="text-neutral-primary font-medium tabular-nums">
-                                      {percent}% complete
-                                    </span>
-                                  </>
                                 )}
                               </div>
 
-                              {course.description && !isBoilerplateDesc && (
-                                <p className="text-xs text-neutral-secondary/90 line-clamp-1 mt-0.5">
-                                  {course.description}
-                                </p>
+                              {thumbnailUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element -- resolved external asset URL
+                                <img
+                                  src={thumbnailUrl}
+                                  alt=""
+                                  className="w-16 h-11 rounded-lg object-cover border border-gray-200/70 shrink-0 hidden sm:block"
+                                />
+                              )}
+
+                              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                                <Link
+                                  href={unitHref}
+                                  className="text-sm sm:text-[15px] font-semibold text-neutral-primary hover:text-primary-solid transition-colors leading-snug"
+                                >
+                                  {course.title}
+                                </Link>
+
+                                <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-neutral-secondary">
+                                  {unit?.referenceNumber && (
+                                    <span className="font-mono text-[11px] text-neutral-secondary/90">
+                                      {unit.referenceNumber}
+                                    </span>
+                                  )}
+                                  {unit?.referenceNumber && <span aria-hidden="true">·</span>}
+                                  <span>{free ? "Free" : formatMoney(course.price)}</span>
+                                  {isCompleted && (
+                                    <>
+                                      <span aria-hidden="true">·</span>
+                                      <span className="text-emerald-700 font-medium">Completed</span>
+                                    </>
+                                  )}
+                                  {!isCompleted && isEnrolled && percent > 0 && (
+                                    <>
+                                      <span aria-hidden="true">·</span>
+                                      <span className="text-neutral-primary font-medium tabular-nums">
+                                        {percent}% complete
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                {course.description && !isBoilerplateDesc && (
+                                  <p className="text-xs text-neutral-secondary/90 line-clamp-1 mt-0.5">
+                                    {course.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center sm:justify-end pl-10 sm:pl-0 shrink-0">
+                              {isCompleted && enrollment ? (
+                                <Link
+                                  href={`/learn/${enrollment.id}`}
+                                  className="text-xs font-medium text-neutral-secondary hover:text-neutral-primary px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                >
+                                  Review
+                                </Link>
+                              ) : isEnrolled && enrollment ? (
+                                <Link href={`/learn/${enrollment.id}`}>
+                                  <Button
+                                    type="button"
+                                    variant={isFocal ? "primary" : "outline"}
+                                    size="sm"
+                                  >
+                                    {percent > 0 ? "Continue" : "Start"}
+                                  </Button>
+                                </Link>
+                              ) : free ? (
+                                <Button
+                                  type="button"
+                                  variant={isFocal ? "primary" : "outline"}
+                                  size="sm"
+                                  loading={isEnrolling && enrollingCourseId === course.id}
+                                  onClick={() => handleEnrollFree(course.id)}
+                                >
+                                  Start
+                                </Button>
+                              ) : (
+                                <Link href={`/courses/${course.id}`}>
+                                  <Button
+                                    type="button"
+                                    variant={isFocal ? "primary" : "outline"}
+                                    size="sm"
+                                  >
+                                    View course
+                                  </Button>
+                                </Link>
                               )}
                             </div>
-                          </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
+                </div>
 
-                          {/* Restrained row action: only the focal next-up unit gets a solid CTA */}
-                          <div className="flex items-center sm:justify-end pl-10 sm:pl-0 shrink-0">
-                            {isCompleted && enrollment ? (
-                              <Link
-                                href={`/learn/${enrollment.id}`}
-                                className="text-xs font-medium text-neutral-secondary hover:text-neutral-primary px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                Review
-                              </Link>
-                            ) : isEnrolled && enrollment ? (
-                              <Link href={`/learn/${enrollment.id}`}>
-                                <Button
-                                  type="button"
-                                  variant={isFocal ? "primary" : "outline"}
-                                  size="sm"
-                                >
-                                  {percent > 0 ? "Continue" : "Start"}
-                                </Button>
-                              </Link>
-                            ) : free ? (
-                              <Button
-                                type="button"
-                                variant={isFocal ? "primary" : "outline"}
-                                size="sm"
-                                loading={isEnrolling && enrollingCourseId === course.id}
-                                onClick={() => handleEnrollFree(course.id)}
-                              >
-                                Start
-                              </Button>
-                            ) : (
-                              <Link href={`/courses/${course.id}`}>
-                                <Button
-                                  type="button"
-                                  variant={isFocal ? "primary" : "outline"}
-                                  size="sm"
-                                >
-                                  View course
-                                </Button>
-                              </Link>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
+                {/* Right Sidebar (4 cols, sticky): Level Progress, Next Action, Certificate & Level Switcher */}
+                <aside className="lg:col-span-4 lg:sticky lg:top-6 flex flex-col gap-4">
+                  {/* Progress & Certificate Card */}
+                  <div className="bg-white border border-gray-200/80 rounded-xl p-5 flex flex-col gap-5 shadow-2xs">
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-secondary">
+                          Level Progress
+                        </span>
+                        <span className="text-sm font-bold text-neutral-primary tabular-nums">
+                          {completionPct}%
+                        </span>
+                      </div>
+
+                      <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            completionPct === 100 ? "bg-emerald-600" : "bg-primary-solid"
+                          }`}
+                          style={{ width: `${completionPct}%` }}
+                        />
+                      </div>
+
+                      <p className="text-xs text-neutral-secondary">
+                        <span className="font-semibold text-neutral-primary tabular-nums">
+                          {levelCompletedCount}
+                        </span>{" "}
+                        of{" "}
+                        <span className="font-semibold text-neutral-primary tabular-nums">
+                          {totalUnits}
+                        </span>{" "}
+                        {totalUnits === 1 ? "unit" : "units"} completed
+                      </p>
+                    </div>
+
+                    {nextFocalEntry ? (
+                      <div className="pt-4 border-t border-gray-100 flex flex-col gap-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-medium text-neutral-secondary">
+                            Up next · Unit {nextFocalEntry.stepNumber}
+                          </span>
+                          <p className="text-sm font-semibold text-neutral-primary leading-snug">
+                            {nextFocalEntry.course.title}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          fullWidth
+                          loading={
+                            isEnrolling && enrollingCourseId === nextFocalEntry.course.id
+                          }
+                          onClick={handleStartFocal}
+                          rightIcon={<FiArrowRight className="w-4 h-4" />}
+                        >
+                          {nextFocalEnrollment && nextFocalEnrollment.percentComplete > 0
+                            ? "Continue Unit"
+                            : "Start Next Unit"}
+                        </Button>
+                      </div>
+                    ) : totalUnits > 0 ? (
+                      <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
+                        <span className="text-xs font-semibold text-emerald-700 inline-flex items-center gap-1.5">
+                          <FiCheckCircle className="w-4 h-4" />
+                          <span>All units completed</span>
+                        </span>
+                        {earnedLevelCert && (
+                          <Link href={`/certificates/level/${earnedLevelCert.id}`}>
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              fullWidth
+                              rightIcon={<FiArrowRight className="w-4 h-4" />}
+                            >
+                              View Level Certificate
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {/* Level Certificate Milestone */}
+                    <div className="pt-4 border-t border-gray-100 flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                          earnedLevelCert || remainingUnits === 0
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-[#fcf8ee] text-[#b4690e]"
+                        }`}
+                      >
+                        <FiAward className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-xs font-semibold text-neutral-primary">
+                          {selectedLevel
+                            ? `Level ${selectedLevel.level} Certificate`
+                            : "Level Certificate"}
+                        </span>
+                        {earnedLevelCert ? (
+                          <Link
+                            href={`/certificates/level/${earnedLevelCert.id}`}
+                            className="text-xs font-medium text-primary-solid hover:underline"
+                          >
+                            Earned — view certificate
+                          </Link>
+                        ) : remainingUnits === 0 && totalUnits > 0 ? (
+                          <Link
+                            href="/certificates"
+                            className="text-xs font-medium text-primary-solid hover:underline"
+                          >
+                            Check your certificates
+                          </Link>
+                        ) : (
+                          <p className="text-xs text-neutral-secondary leading-relaxed">
+                            Complete {remainingUnits} more{" "}
+                            {remainingUnits === 1 ? "unit" : "units"} to unlock your level certificate.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Level Switcher (when trade has multiple levels) */}
+                  {qualificationLevels.length > 1 && (
+                    <div className="bg-white border border-gray-200/80 rounded-xl p-4 flex flex-col gap-2.5 shadow-2xs">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-neutral-secondary px-1">
+                        {selectedTradeName} Levels
+                      </span>
+                      <div className="flex flex-col gap-1">
+                        {qualificationLevels.map((lvl) => {
+                          const isCurrent = lvl.id === selectedLevelId;
+                          const lvlCount = selectedTradeCourses.filter(
+                            (c) => c.capLinkage?.qualificationLevelId === lvl.id,
+                          ).length;
+                          return (
+                            <button
+                              key={lvl.id}
+                              type="button"
+                              onClick={() => navigateCatalog(selectedTradeId, lvl.id)}
+                              className={`w-full px-3 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                                isCurrent
+                                  ? "bg-primary-solid/8 text-primary-solid font-semibold"
+                                  : "text-neutral-secondary hover:bg-gray-50 hover:text-neutral-primary"
+                              }`}
+                            >
+                              <span>Level {lvl.level}</span>
+                              <span className="text-[11px] tabular-nums opacity-80">
+                                {lvlCount} {lvlCount === 1 ? "unit" : "units"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </aside>
               </div>
             );
           })()
