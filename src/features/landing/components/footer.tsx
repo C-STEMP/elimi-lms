@@ -242,7 +242,7 @@ export const Footer: React.FC = () => {
                 </li>
                 <li>
                   <Link
-                    href="#"
+                    href="/privacy-policy"
                     className="hover:text-white/80 transition-colors"
                   >
                     Privacy Policy
